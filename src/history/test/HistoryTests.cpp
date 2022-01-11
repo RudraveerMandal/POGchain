@@ -1230,7 +1230,7 @@ TEST_CASE("persist publish queue", "[history][publish][acceptance]")
 }
 
 // The idea with this test is that we join a network and somehow get a gap
-// in the SCP voting sequence while we're trying to catchup. This will let
+// in the pogcvm voting sequence while we're trying to catchup. This will let
 // system catchup just before the gap.
 TEST_CASE("catchup with a gap", "[history][catchup][acceptance]")
 {

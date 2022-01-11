@@ -7,7 +7,7 @@
 #include "herder/QuorumIntersectionChecker.h"
 #include "lib/catch.hpp"
 #include "main/Config.h"
-#include "scp/LocalNode.h"
+#include "pogcvm/LocalNode.h"
 #include "test/test.h"
 #include "util/Logging.h"
 #include "util/Math.h"
@@ -19,7 +19,7 @@
 
 using namespace POGchain;
 
-using QS = SCPQuorumSet;
+using QS = pogcvmQuorumSet;
 using VQ = xdr::xvector<QS>;
 using VK = xdr::xvector<PublicKey>;
 using std::make_shared;
@@ -115,21 +115,21 @@ TEST_CASE("quorum intersection 6-node with subquorums",
     PublicKey pkE = SecretKey::pseudoRandomForTesting().getPublicKey();
     PublicKey pkF = SecretKey::pseudoRandomForTesting().getPublicKey();
 
-    SCPQuorumSet qsABC(2, VK({pkA, pkB, pkC}), VQ{});
-    SCPQuorumSet qsABD(2, VK({pkA, pkB, pkD}), VQ{});
-    SCPQuorumSet qsABE(2, VK({pkA, pkB, pkE}), VQ{});
-    SCPQuorumSet qsABF(2, VK({pkA, pkB, pkF}), VQ{});
+    pogcvmQuorumSet qsABC(2, VK({pkA, pkB, pkC}), VQ{});
+    pogcvmQuorumSet qsABD(2, VK({pkA, pkB, pkD}), VQ{});
+    pogcvmQuorumSet qsABE(2, VK({pkA, pkB, pkE}), VQ{});
+    pogcvmQuorumSet qsABF(2, VK({pkA, pkB, pkF}), VQ{});
 
-    SCPQuorumSet qsACD(2, VK({pkA, pkC, pkD}), VQ{});
-    SCPQuorumSet qsACE(2, VK({pkA, pkC, pkE}), VQ{});
-    SCPQuorumSet qsACF(2, VK({pkA, pkC, pkF}), VQ{});
+    pogcvmQuorumSet qsACD(2, VK({pkA, pkC, pkD}), VQ{});
+    pogcvmQuorumSet qsACE(2, VK({pkA, pkC, pkE}), VQ{});
+    pogcvmQuorumSet qsACF(2, VK({pkA, pkC, pkF}), VQ{});
 
-    SCPQuorumSet qsADE(2, VK({pkA, pkD, pkE}), VQ{});
-    SCPQuorumSet qsADF(2, VK({pkA, pkD, pkF}), VQ{});
+    pogcvmQuorumSet qsADE(2, VK({pkA, pkD, pkE}), VQ{});
+    pogcvmQuorumSet qsADF(2, VK({pkA, pkD, pkF}), VQ{});
 
-    SCPQuorumSet qsBDC(2, VK({pkB, pkD, pkC}), VQ{});
-    SCPQuorumSet qsBDE(2, VK({pkB, pkD, pkE}), VQ{});
-    SCPQuorumSet qsCDE(2, VK({pkC, pkD, pkE}), VQ{});
+    pogcvmQuorumSet qsBDC(2, VK({pkB, pkD, pkC}), VQ{});
+    pogcvmQuorumSet qsBDE(2, VK({pkB, pkD, pkE}), VQ{});
+    pogcvmQuorumSet qsCDE(2, VK({pkC, pkD, pkE}), VQ{});
 
     qm[pkA] = QuorumTracker::NodeInfo{
         make_shared<QS>(2, VK{}, VQ({qsBDC, qsBDE, qsCDE})), 0};
@@ -193,23 +193,23 @@ TEST_CASE("quorum non intersection 6-node with subquorums",
     PublicKey pkE = SecretKey::pseudoRandomForTesting().getPublicKey();
     PublicKey pkF = SecretKey::pseudoRandomForTesting().getPublicKey();
 
-    SCPQuorumSet qsABC(2, VK({pkA, pkB, pkC}), VQ{});
-    SCPQuorumSet qsABD(2, VK({pkA, pkB, pkD}), VQ{});
-    SCPQuorumSet qsABE(2, VK({pkA, pkB, pkE}), VQ{});
-    SCPQuorumSet qsABF(2, VK({pkA, pkB, pkF}), VQ{});
+    pogcvmQuorumSet qsABC(2, VK({pkA, pkB, pkC}), VQ{});
+    pogcvmQuorumSet qsABD(2, VK({pkA, pkB, pkD}), VQ{});
+    pogcvmQuorumSet qsABE(2, VK({pkA, pkB, pkE}), VQ{});
+    pogcvmQuorumSet qsABF(2, VK({pkA, pkB, pkF}), VQ{});
 
-    SCPQuorumSet qsACD(2, VK({pkA, pkC, pkD}), VQ{});
-    SCPQuorumSet qsACE(2, VK({pkA, pkC, pkE}), VQ{});
-    SCPQuorumSet qsACF(2, VK({pkA, pkC, pkF}), VQ{});
+    pogcvmQuorumSet qsACD(2, VK({pkA, pkC, pkD}), VQ{});
+    pogcvmQuorumSet qsACE(2, VK({pkA, pkC, pkE}), VQ{});
+    pogcvmQuorumSet qsACF(2, VK({pkA, pkC, pkF}), VQ{});
 
-    SCPQuorumSet qsADE(2, VK({pkA, pkD, pkE}), VQ{});
-    SCPQuorumSet qsADF(2, VK({pkA, pkD, pkF}), VQ{});
+    pogcvmQuorumSet qsADE(2, VK({pkA, pkD, pkE}), VQ{});
+    pogcvmQuorumSet qsADF(2, VK({pkA, pkD, pkF}), VQ{});
 
-    SCPQuorumSet qsBDC(2, VK({pkB, pkD, pkC}), VQ{});
-    SCPQuorumSet qsBDE(2, VK({pkB, pkD, pkE}), VQ{});
-    SCPQuorumSet qsBDF(2, VK({pkB, pkD, pkF}), VQ{});
-    SCPQuorumSet qsCDE(2, VK({pkC, pkD, pkE}), VQ{});
-    SCPQuorumSet qsCDF(2, VK({pkC, pkD, pkF}), VQ{});
+    pogcvmQuorumSet qsBDC(2, VK({pkB, pkD, pkC}), VQ{});
+    pogcvmQuorumSet qsBDE(2, VK({pkB, pkD, pkE}), VQ{});
+    pogcvmQuorumSet qsBDF(2, VK({pkB, pkD, pkF}), VQ{});
+    pogcvmQuorumSet qsCDE(2, VK({pkC, pkD, pkE}), VQ{});
+    pogcvmQuorumSet qsCDF(2, VK({pkC, pkD, pkF}), VQ{});
 
     qm[pkA] = QuorumTracker::NodeInfo{
         make_shared<QS>(2, VK{}, VQ({qsABC, qsABD, qsABE})), 0};
@@ -265,12 +265,12 @@ TEST_CASE("quorum plausible non intersection", "[herder][quorumintersection]")
 
     // Some innersets used in quorums below.
 
-    SCPQuorumSet qs1of2LOBSTR(1, VK({pkLOBSTR1, pkLOBSTR2}), VQ{});
-    SCPQuorumSet qs1of2COINQVEST(1, VK({pkCOINQVEST1, pkCOINQVEST2}), VQ{});
+    pogcvmQuorumSet qs1of2LOBSTR(1, VK({pkLOBSTR1, pkLOBSTR2}), VQ{});
+    pogcvmQuorumSet qs1of2COINQVEST(1, VK({pkCOINQVEST1, pkCOINQVEST2}), VQ{});
 
-    SCPQuorumSet qs2of3SDF(1, VK({pkSDF1, pkSDF2, pkSDF3}), VQ{});
+    pogcvmQuorumSet qs2of3SDF(1, VK({pkSDF1, pkSDF2, pkSDF3}), VQ{});
 
-    SCPQuorumSet qs2of3SatoshiPay(2, VK({pkSatoshi1, pkSatoshi2, pkSatoshi3}),
+    pogcvmQuorumSet qs2of3SatoshiPay(2, VK({pkSatoshi1, pkSatoshi2, pkSatoshi3}),
                                   VQ{});
 
     // All 3 SDF nodes get this:
@@ -356,11 +356,11 @@ interconnectOrgs(xdr::xvector<xdr::xvector<PublicKey>> const& orgs,
                  size_t ownThreshPct = 67, size_t innerThreshPct = 51)
 {
     QuorumTracker::QuorumMap qm;
-    xdr::xvector<SCPQuorumSet> emptySet;
+    xdr::xvector<pogcvmQuorumSet> emptySet;
     for (size_t i = 0; i < orgs.size(); ++i)
     {
         auto const& org = orgs.at(i);
-        auto qs = std::make_shared<SCPQuorumSet>();
+        auto qs = std::make_shared<pogcvmQuorumSet>();
         qs->validators = org;
         for (auto const& pk : org)
         {
@@ -746,7 +746,7 @@ TEST_CASE("quorum intersection 6-org 1-node 4-null qsets",
     // We build this case to explore the correct inferred over-approximate qsets
     // for org2..org5. We know org0..org1 have threshold 67% = 3-of-4 (4 being
     // "self + 3 neighbours"); the current logic in the quorum intersection
-    // checker (see buildGraph and convertSCPQuorumSet) will treat this network
+    // checker (see buildGraph and convertpogcvmQuorumSet) will treat this network
     // as _only_ having 2-nodes and will therefore declare it vacuously enjoying
     // quorum intersection due to being halted.
     //

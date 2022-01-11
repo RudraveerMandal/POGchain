@@ -845,7 +845,7 @@ CatchupSimulation::externalizeLedger(HerderImpl& herder, uint32_t ledger)
 
     herder.getPendingEnvelopes().putTxSet(lcd.getTxSet()->getContentsHash(),
                                           lcd.getLedgerSeq(), txSet);
-    herder.getHerderSCPDriver().valueExternalized(
+    herder.getHerderpogcvmDriver().valueExternalized(
         lcd.getLedgerSeq(), xdr::xdr_to_opaque(lcd.getValue()));
 }
 

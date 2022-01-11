@@ -14,8 +14,8 @@
 #include <set>
 
 /*
-SCP messages that you have received but are waiting to get the info of
-before feeding into SCP
+pogcvm messages that you have received but are waiting to get the info of
+before feeding into pogcvm
 */
 
 namespace POGchain
@@ -26,14 +26,14 @@ class HerderImpl;
 struct SlotEnvelopes
 {
     // envelopes we have discarded
-    std::set<SCPEnvelope> mDiscardedEnvelopes;
+    std::set<pogcvmEnvelope> mDiscardedEnvelopes;
     // envelopes we have processed already
-    std::set<SCPEnvelope> mProcessedEnvelopes;
+    std::set<pogcvmEnvelope> mProcessedEnvelopes;
     // envelopes we are fetching right now
-    std::map<SCPEnvelope, VirtualClock::time_point> mFetchingEnvelopes;
+    std::map<pogcvmEnvelope, VirtualClock::time_point> mFetchingEnvelopes;
 
-    // list of ready envelopes that haven't been sent to SCP yet
-    std::vector<SCPEnvelopeWrapperPtr> mReadyEnvelopes;
+    // list of ready envelopes that haven't been sent to pogcvm yet
+    std::vector<pogcvmEnvelopeWrapperPtr> mReadyEnvelopes;
 
     // track cost per validator in local qset
     // cost includes sizes of:
@@ -53,9 +53,9 @@ class PendingEnvelopes
     std::map<uint64, SlotEnvelopes> mEnvelopes;
 
     // recent quorum sets
-    RandomEvictionCache<Hash, SCPQuorumSetPtr> mQsetCache;
+    RandomEvictionCache<Hash, pogcvmQuorumSetPtr> mQsetCache;
     // weak references to all known qsets
-    UnorderedMap<Hash, std::weak_ptr<SCPQuorumSet>> mKnownQSets;
+    UnorderedMap<Hash, std::weak_ptr<pogcvmQuorumSet>> mKnownQSets;
 
     ItemFetcher mTxSetFetcher;
     ItemFetcher mQuorumSetFetcher;
@@ -82,24 +82,24 @@ class PendingEnvelopes
     // Tracked cost per slot
     medida::Histogram& mCostPerSlot;
 
-    // discards all SCP envelopes that use QSet with a given hash,
+    // discards all pogcvm envelopes that use QSet with a given hash,
     // as it is not sane QSet
-    void discardSCPEnvelopesWithQSet(Hash const& hash);
+    void discardpogcvmEnvelopesWithQSet(Hash const& hash);
 
     void updateMetrics();
 
-    void envelopeReady(SCPEnvelope const& envelope);
-    void discardSCPEnvelope(SCPEnvelope const& envelope);
-    bool isFullyFetched(SCPEnvelope const& envelope);
-    void startFetch(SCPEnvelope const& envelope);
-    void stopFetch(SCPEnvelope const& envelope);
-    void touchFetchCache(SCPEnvelope const& envelope);
-    bool isDiscarded(SCPEnvelope const& envelope) const;
+    void envelopeReady(pogcvmEnvelope const& envelope);
+    void discardpogcvmEnvelope(pogcvmEnvelope const& envelope);
+    bool isFullyFetched(pogcvmEnvelope const& envelope);
+    void startFetch(pogcvmEnvelope const& envelope);
+    void stopFetch(pogcvmEnvelope const& envelope);
+    void touchFetchCache(pogcvmEnvelope const& envelope);
+    bool isDiscarded(pogcvmEnvelope const& envelope) const;
 
-    SCPQuorumSetPtr putQSet(Hash const& qSetHash, SCPQuorumSet const& qSet);
+    pogcvmQuorumSetPtr putQSet(Hash const& qSetHash, pogcvmQuorumSet const& qSet);
     // tries to find a qset in memory, setting touch also touches the LRU,
     // extending the lifetime of the result
-    SCPQuorumSetPtr getKnownQSet(Hash const& hash, bool touch);
+    pogcvmQuorumSetPtr getKnownQSet(Hash const& hash, bool touch);
 
     // tries to find a txset in memory, setting touch also touches the LRU,
     // extending the lifetime of the result
@@ -107,7 +107,7 @@ class PendingEnvelopes
 
     void cleanKnownData();
 
-    void recordReceivedCost(SCPEnvelope const& env);
+    void recordReceivedCost(pogcvmEnvelope const& env);
 
     UnorderedMap<NodeID, size_t> getCostPerValidator(uint64 slotIndex) const;
 
@@ -128,29 +128,29 @@ class PendingEnvelopes
      *
      * Return status of received envelope.
      */
-    Herder::EnvelopeStatus recvSCPEnvelope(SCPEnvelope const& envelope);
+    Herder::EnvelopeStatus recvpogcvmEnvelope(pogcvmEnvelope const& envelope);
 
     /**
      * Add @p qset identified by @p hash to local cache. Notifies
      * @see ItemFetcher about that event - it may cause calls to Herder's
-     * recvSCPEnvelope which in turn may cause calls to @see recvSCPEnvelope
+     * recvpogcvmEnvelope which in turn may cause calls to @see recvpogcvmEnvelope
      * in PendingEnvelopes.
      */
-    void addSCPQuorumSet(Hash const& hash, SCPQuorumSet const& qset);
+    void addpogcvmQuorumSet(Hash const& hash, pogcvmQuorumSet const& qset);
 
     /**
      * Check if @p qset identified by @p hash was requested before from peers.
      * If not, ignores that @p qset. If it was requested, calls
-     * @see addSCPQuorumSet.
+     * @see addpogcvmQuorumSet.
      *
-     * Return true if SCPQuorumSet is sane and useful (was asked for).
+     * Return true if pogcvmQuorumSet is sane and useful (was asked for).
      */
-    bool recvSCPQuorumSet(Hash const& hash, SCPQuorumSet const& qset);
+    bool recvpogcvmQuorumSet(Hash const& hash, pogcvmQuorumSet const& qset);
 
     /**
      * Add @p txset identified by @p hash to local cache. Notifies
      * @see ItemFetcher about that event - it may cause calls to Herder's
-     * recvSCPEnvelope which in turn may cause calls to @see recvSCPEnvelope
+     * recvpogcvmEnvelope which in turn may cause calls to @see recvpogcvmEnvelope
      * in PendingEnvelopes.
      */
     void addTxSet(Hash const& hash, uint64 lastSeenSlotIndex,
@@ -175,7 +175,7 @@ class PendingEnvelopes
     void peerDoesntHave(MessageType type, Hash const& itemID,
                         Peer::pointer peer);
 
-    SCPEnvelopeWrapperPtr pop(uint64 slotIndex);
+    pogcvmEnvelopeWrapperPtr pop(uint64 slotIndex);
 
     // erases data for all slots strictly below `slotIndex`
     void eraseBelow(uint64 slotIndex);
@@ -187,7 +187,7 @@ class PendingEnvelopes
     Json::Value getJsonInfo(size_t limit);
 
     TxSetFramePtr getTxSet(Hash const& hash);
-    SCPQuorumSetPtr getQSet(Hash const& hash);
+    pogcvmQuorumSetPtr getQSet(Hash const& hash);
 
     // returns true if we think that the node is in the transitive quorum for
     // sure
@@ -197,7 +197,7 @@ class PendingEnvelopes
     QuorumTracker::QuorumMap const& getCurrentlyTrackedQuorum() const;
 
     // updates internal state when an envelope was successfully processed
-    void envelopeProcessed(SCPEnvelope const& env);
+    void envelopeProcessed(pogcvmEnvelope const& env);
 
     void reportCostOutliersForSlot(int64_t slotIndex, bool updateMetrics) const;
     Json::Value getJsonValidatorCost(bool summary, bool fullKeys,

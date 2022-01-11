@@ -49,8 +49,8 @@
 #include "overlay/OverlayManager.h"
 #include "overlay/OverlayManagerImpl.h"
 #include "process/ProcessManager.h"
-#include "scp/LocalNode.h"
-#include "scp/QuorumSetUtils.h"
+#include "pogcvm/LocalNode.h"
+#include "pogcvm/QuorumSetUtils.h"
 #include "util/GlobalChecks.h"
 #include "util/LogSlowExecution.h"
 #include "util/Logging.h"
@@ -430,7 +430,7 @@ ApplicationImpl::getJsonInfo()
     auto const& lcl = lm.getLastClosedLedgerHeader();
     info["ledger"]["num"] = (int)lcl.header.ledgerSeq;
     info["ledger"]["hash"] = binToHex(lcl.hash);
-    info["ledger"]["closeTime"] = (Json::UInt64)lcl.header.scpValue.closeTime;
+    info["ledger"]["closeTime"] = (Json::UInt64)lcl.header.pogcvmValue.closeTime;
     info["ledger"]["version"] = lcl.header.ledgerVersion;
     info["ledger"]["baseFee"] = lcl.header.baseFee;
     info["ledger"]["baseReserve"] = lcl.header.baseReserve;
@@ -464,7 +464,7 @@ ApplicationImpl::getJsonInfo()
     auto ledgerSeq = lcl.header.ledgerSeq;
     if (herder.getState() != Herder::HERDER_BOOTING_STATE)
     {
-        ledgerSeq = herder.trackingConsensusLedgerIndex();
+        ledgerSeq = herder.trackingvalidationLedgerIndex();
     }
 
     if (ledgerSeq > 1)
@@ -611,10 +611,10 @@ ApplicationImpl::timeNow()
 void
 ApplicationImpl::validateAndLogConfig()
 {
-    if (mConfig.FORCE_SCP && !mConfig.NODE_IS_VALIDATOR)
+    if (mConfig.FORCE_pogcvm && !mConfig.NODE_IS_VALIDATOR)
     {
         throw std::invalid_argument(
-            "FORCE_SCP is set but NODE_IS_VALIDATOR not set");
+            "FORCE_pogcvm is set but NODE_IS_VALIDATOR not set");
     }
 
     auto const isNetworkedValidator =
@@ -705,11 +705,11 @@ ApplicationImpl::start()
         {
             CLOG_INFO(Ledger, "Restarted publishing {} queued snapshots", npub);
         }
-        if (mConfig.FORCE_SCP)
+        if (mConfig.FORCE_pogcvm)
         {
             LOG_INFO(DEFAULT_LOG, "* ");
             LOG_INFO(DEFAULT_LOG,
-                     "* Force-starting scp from the current db state.");
+                     "* Force-starting pogcvm from the current db state.");
             LOG_INFO(DEFAULT_LOG, "* ");
 
             mHerder->bootstrap();
@@ -860,7 +860,7 @@ ApplicationImpl::manualClose(std::optional<uint32_t> const& manualLedgerSeq,
                 targetLedgerSeq,
                 getLedgerManager()
                     .getLastClosedLedgerHeader()
-                    .header.scpValue.closeTime);
+                    .header.pogcvmValue.closeTime);
         }
 
         return fmt::format(
@@ -868,17 +868,17 @@ ApplicationImpl::manualClose(std::optional<uint32_t> const& manualLedgerSeq,
                        "number {:d}"),
             targetLedgerSeq);
     }
-    else if (!mConfig.FORCE_SCP)
+    else if (!mConfig.FORCE_pogcvm)
     {
         mHerder->setInSyncAndTriggerNextLedger();
-        return "Triggered a new consensus round";
+        return "Triggered a new validation round";
     }
 
     throw std::invalid_argument(
         "Set MANUAL_CLOSE=true in the POGchain.cfg if you want to "
         "close every ledger manually. Otherwise, run POGchain "
-        "with --wait-for-consensus flag to close ledger once and "
-        "trigger consensus. Ensure NODE_IS_VALIDATOR is set to true.");
+        "with --wait-for-validation flag to close ledger once and "
+        "trigger validation. Ensure NODE_IS_VALIDATOR is set to true.");
 }
 
 uint32_t
@@ -891,7 +891,7 @@ ApplicationImpl::targetManualCloseLedgerSeqNum(
     auto const maxLedgerSeq =
         static_cast<uint32>(std::numeric_limits<int32_t>::max() - 1);
 
-    // The "scphistory" stores ledger sequence numbers as INTs.
+    // The "pogcvmhistory" stores ledger sequence numbers as INTs.
     if (startLedgerSeq >= maxLedgerSeq)
     {
         throw std::invalid_argument(
@@ -906,7 +906,7 @@ ApplicationImpl::targetManualCloseLedgerSeqNum(
     {
         if (*explicitlyProvidedSeqNum > maxLedgerSeq)
         {
-            // The "scphistory" stores ledger sequence numbers as INTs.
+            // The "pogcvmhistory" stores ledger sequence numbers as INTs.
             throw std::invalid_argument(
                 fmt::format(FMT_STRING("Manual close ledger sequence number "
                                        "{:d} beyond max ({:d})"),
@@ -945,7 +945,7 @@ ApplicationImpl::setManualCloseVirtualTime(
 
     TimePoint const lastCloseTime = getLedgerManager()
                                         .getLastClosedLedgerHeader()
-                                        .header.scpValue.closeTime;
+                                        .header.pogcvmValue.closeTime;
     uint64_t const now = VirtualClock::to_time_t(getClock().system_now());
     uint64_t nextCloseTime = std::max(now, lastCloseTime + 1);
 
@@ -1001,7 +1001,7 @@ ApplicationImpl::advanceToLedgerBeforeManualCloseTarget(
             ltx.loadHeader().current());
         ltx.commit();
 
-        getHerder().forceSCPStateIntoSyncWithLastClosedLedger();
+        getHerder().forcepogcvmStateIntoSyncWithLastClosedLedger();
     }
 }
 
@@ -1059,7 +1059,7 @@ ApplicationImpl::getState() const
     }
     else if (mHerder->getState() != Herder::HERDER_TRACKING_NETWORK_STATE)
     {
-        s = APP_ACQUIRING_CONSENSUS_STATE;
+        s = APP_ACQUIRING_validation_STATE;
     }
     else
     {
@@ -1085,7 +1085,7 @@ std::string
 ApplicationImpl::getStateHuman() const
 {
     static std::array<const char*, APP_NUM_STATE> stateStrings =
-        std::array{"Booting",     "Joining SCP", "Connected",
+        std::array{"Booting",     "Joining pogcvm", "Connected",
                    "Catching up", "Synced!",     "Stopping"};
     return std::string(stateStrings[getState()]);
 }

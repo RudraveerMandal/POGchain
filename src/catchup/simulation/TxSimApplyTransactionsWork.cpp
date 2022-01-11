@@ -471,7 +471,7 @@ TxSimApplyTransactionsWork::getNextLedger(
             return true;
         }
 
-        upgrades = mHeaderHistory.header.scpValue.upgrades;
+        upgrades = mHeaderHistory.header.pogcvmValue.upgrades;
         upgrades.erase(
             std::remove_if(upgrades.begin(), upgrades.end(),
                            [](auto const& opaqueUpgrade) {
@@ -530,7 +530,7 @@ TxSimApplyTransactionsWork::onReset()
         auto txSet = std::make_shared<TxSetFrame>(mNetworkID, txSetXDR);
 
         sv.txSetHash = txSet->getContentsHash();
-        sv.closeTime = header.scpValue.closeTime + 1;
+        sv.closeTime = header.pogcvmValue.closeTime + 1;
 
         LedgerCloseData closeData(header.ledgerSeq + 1, txSet, sv);
         lm.closeLedger(closeData);
@@ -599,7 +599,7 @@ TxSimApplyTransactionsWork::onRun()
 
     POGchainValue sv;
     sv.txSetHash = txSet->getContentsHash();
-    sv.closeTime = header.scpValue.closeTime + 1;
+    sv.closeTime = header.pogcvmValue.closeTime + 1;
     sv.upgrades.insert(sv.upgrades.begin(), upgrades.begin(), upgrades.end());
 
     LedgerCloseData closeData(header.ledgerSeq + 1, txSet, sv);

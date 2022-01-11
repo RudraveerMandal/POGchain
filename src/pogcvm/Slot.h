@@ -8,7 +8,7 @@
 #include "LocalNode.h"
 #include "NominationProtocol.h"
 #include "lib/json/json-forwards.h"
-#include "scp/SCP.h"
+#include "pogcvm/pogcvm.h"
 #include <functional>
 #include <memory>
 #include <set>
@@ -20,13 +20,13 @@ namespace POGchain
 class Node;
 
 /**
- * The Slot object is in charge of maintaining the state of the SCP protocol
+ * The Slot object is in charge of maintaining the state of the pogcvm protocol
  * for a given slot index.
  */
 class Slot : public std::enable_shared_from_this<Slot>
 {
     const uint64 mSlotIndex; // the index this slot is tracking
-    SCP& mSCP;
+    pogcvm& mpogcvm;
 
     BallotProtocol mBallotProtocol;
     NominationProtocol mNominationProtocol;
@@ -36,7 +36,7 @@ class Slot : public std::enable_shared_from_this<Slot>
     struct HistoricalStatement
     {
         time_t mWhen;
-        SCPStatement mStatement;
+        pogcvmStatement mStatement;
         bool mValidated;
     };
 
@@ -49,7 +49,7 @@ class Slot : public std::enable_shared_from_this<Slot>
     bool mGotVBlocking;
 
   public:
-    Slot(uint64 slotIndex, SCP& SCP);
+    Slot(uint64 slotIndex, pogcvm& pogcvm);
 
     uint64
     getSlotIndex() const
@@ -57,22 +57,22 @@ class Slot : public std::enable_shared_from_this<Slot>
         return mSlotIndex;
     }
 
-    SCP&
-    getSCP()
+    pogcvm&
+    getpogcvm()
     {
-        return mSCP;
+        return mpogcvm;
     }
 
-    SCPDriver&
-    getSCPDriver()
+    pogcvmDriver&
+    getpogcvmDriver()
     {
-        return mSCP.getDriver();
+        return mpogcvm.getDriver();
     }
 
-    SCPDriver const&
-    getSCPDriver() const
+    pogcvmDriver const&
+    getpogcvmDriver() const
     {
-        return mSCP.getDriver();
+        return mpogcvm.getDriver();
     }
 
     BallotProtocol&
@@ -84,31 +84,31 @@ class Slot : public std::enable_shared_from_this<Slot>
     ValueWrapperPtr const& getLatestCompositeCandidate();
 
     // returns the latest messages the slot emitted
-    std::vector<SCPEnvelope> getLatestMessagesSend() const;
+    std::vector<pogcvmEnvelope> getLatestMessagesSend() const;
 
     // forces the state to match the one in the envelope
     // this is used when rebuilding the state after a crash for example
-    void setStateFromEnvelope(SCPEnvelopeWrapperPtr e);
+    void setStateFromEnvelope(pogcvmEnvelopeWrapperPtr e);
 
     // calls f for all latest messages
-    void processCurrentState(std::function<bool(SCPEnvelope const&)> const& f,
+    void processCurrentState(std::function<bool(pogcvmEnvelope const&)> const& f,
                              bool forceSelf) const;
 
     // returns the latest message from a node
     // or nullptr if not found
-    SCPEnvelope const* getLatestMessage(NodeID const& id) const;
+    pogcvmEnvelope const* getLatestMessage(NodeID const& id) const;
 
     // returns messages that helped this slot externalize
-    std::vector<SCPEnvelope> getExternalizingState() const;
+    std::vector<pogcvmEnvelope> getExternalizingState() const;
 
     // records the statement in the historical record for this slot
-    void recordStatement(SCPStatement const& st);
+    void recordStatement(pogcvmStatement const& st);
 
     // Process a newly received envelope for this slot and update the state of
     // the slot accordingly.
     // self: set to true when node wants to record its own messages (potentially
     // triggering more transitions)
-    SCP::EnvelopeState processEnvelope(SCPEnvelopeWrapperPtr envelope,
+    pogcvm::EnvelopeState processEnvelope(pogcvmEnvelopeWrapperPtr envelope,
                                        bool self);
 
     bool abandonBallot();
@@ -120,7 +120,7 @@ class Slot : public std::enable_shared_from_this<Slot>
     // the state if no value was prepared
     bool bumpState(Value const& value, bool force);
 
-    // attempts to nominate a value for consensus
+    // attempts to nominate a value for validation
     bool nominate(ValueWrapperPtr value, Value const& previousValue,
                   bool timedout);
 
@@ -158,28 +158,28 @@ class Slot : public std::enable_shared_from_this<Slot>
     // with the statement.
     // note: the companion hash for an EXTERNALIZE statement does
     // not match the hash of the QSet, but the hash of commitQuorumSetHash
-    static Hash getCompanionQuorumSetHashFromStatement(SCPStatement const& st);
+    static Hash getCompanionQuorumSetHashFromStatement(pogcvmStatement const& st);
 
     // returns the values associated with the statement
-    static std::vector<Value> getStatementValues(SCPStatement const& st);
+    static std::vector<Value> getStatementValues(pogcvmStatement const& st);
 
     // returns the QuorumSet that should be used for a node given the
     // statement (singleton for externalize)
-    SCPQuorumSetPtr getQuorumSetFromStatement(SCPStatement const& st);
+    pogcvmQuorumSetPtr getQuorumSetFromStatement(pogcvmStatement const& st);
 
     // wraps a statement in an envelope (sign it, etc)
-    SCPEnvelope createEnvelope(SCPStatement const& statement);
+    pogcvmEnvelope createEnvelope(pogcvmStatement const& statement);
 
     // ** federated agreement helper functions
 
     // returns true if the statement defined by voted and accepted
     // should be accepted
     bool federatedAccept(StatementPredicate voted, StatementPredicate accepted,
-                         std::map<NodeID, SCPEnvelopeWrapperPtr> const& envs);
+                         std::map<NodeID, pogcvmEnvelopeWrapperPtr> const& envs);
     // returns true if the statement defined by voted
     // is ratified
     bool federatedRatify(StatementPredicate voted,
-                         std::map<NodeID, SCPEnvelopeWrapperPtr> const& envs);
+                         std::map<NodeID, pogcvmEnvelopeWrapperPtr> const& envs);
 
     std::shared_ptr<LocalNode> getLocalNode();
 
@@ -190,8 +190,8 @@ class Slot : public std::enable_shared_from_this<Slot>
     };
 
   protected:
-    std::vector<SCPEnvelope> getEntireCurrentState();
+    std::vector<pogcvmEnvelope> getEntireCurrentState();
     void maybeSetGotVBlocking();
-    friend class TestSCP;
+    friend class Testpogcvm;
 };
 }

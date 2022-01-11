@@ -229,7 +229,7 @@ SurveyManager::makeSurveyRequest(NodeID const& nodeToSurvey) const
     auto& signedRequest = newMsg.signedSurveyRequestMessage();
 
     auto& request = signedRequest.request;
-    request.ledgerNum = mApp.getHerder().trackingConsensusLedgerIndex();
+    request.ledgerNum = mApp.getHerder().trackingvalidationLedgerIndex();
     request.surveyorPeerID = mApp.getConfig().NODE_SEED.getPublicKey();
 
     request.surveyedPeerID = nodeToSurvey;

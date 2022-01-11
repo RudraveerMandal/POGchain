@@ -3,7 +3,7 @@
 // of this distribution or at http://www.apache.org/licenses/LICENSE-2.0
 
 #include "herder/HerderUtils.h"
-#include "scp/Slot.h"
+#include "pogcvm/Slot.h"
 #include "xdr/POGchain-ledger.h"
 #include <algorithm>
 #include <xdrpp/marshal.h>
@@ -12,7 +12,7 @@ namespace POGchain
 {
 
 std::vector<Hash>
-getTxSetHashes(SCPEnvelope const& envelope)
+getTxSetHashes(pogcvmEnvelope const& envelope)
 {
     auto values = getPOGchainValues(envelope.statement);
     auto result = std::vector<Hash>{};
@@ -25,7 +25,7 @@ getTxSetHashes(SCPEnvelope const& envelope)
 }
 
 std::vector<POGchainValue>
-getPOGchainValues(SCPStatement const& statement)
+getPOGchainValues(pogcvmStatement const& statement)
 {
     auto values = Slot::getStatementValues(statement);
     auto result = std::vector<POGchainValue>{};

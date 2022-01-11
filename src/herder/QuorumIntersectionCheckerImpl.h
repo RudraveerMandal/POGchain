@@ -355,7 +355,7 @@
 #include "util/BitSet.h"
 #include "util/RandomEvictionCache.h"
 #include "util/TarjanSCCCalculator.h"
-#include "xdr/POGchain-SCP.h"
+#include "xdr/POGchain-pogcvm.h"
 #include "xdr/POGchain-types.h"
 #include <functional>
 
@@ -366,7 +366,7 @@ struct QBitSet;
 using QGraph = std::vector<QBitSet>;
 class QuorumIntersectionCheckerImpl;
 
-// A QBitSet is the "fast" representation of a SCPQuorumSet. It includes both a
+// A QBitSet is the "fast" representation of a pogcvmQuorumSet. It includes both a
 // BitSet of its own nodes and a set of innerSets, along with a "successors"
 // BitSet that contains the union of all the bits set in the own nodes or
 // innerSets, for fast successor-testing.
@@ -505,7 +505,7 @@ class QuorumIntersectionCheckerImpl : public POGchain::QuorumIntersectionChecker
     // InterruptedException at the nearest convenient moment.
     std::atomic<bool>& mInterruptFlag;
 
-    QBitSet convertSCPQuorumSet(POGchain::SCPQuorumSet const& sqs);
+    QBitSet convertpogcvmQuorumSet(POGchain::pogcvmQuorumSet const& sqs);
     void buildGraph(POGchain::QuorumTracker::QuorumMap const& qmap);
     void buildSCCs();
 

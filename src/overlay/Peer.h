@@ -21,7 +21,7 @@ class Meter;
 namespace POGchain
 {
 
-typedef std::shared_ptr<SCPQuorumSet> SCPQuorumSetPtr;
+typedef std::shared_ptr<pogcvmQuorumSet> pogcvmQuorumSetPtr;
 
 class Application;
 class LoopbackPeer;
@@ -168,14 +168,14 @@ class Peer : public std::enable_shared_from_this<Peer>,
     void recvGetTxSet(POGchainMessage const& msg);
     void recvTxSet(POGchainMessage const& msg);
     void recvTransaction(POGchainMessage const& msg);
-    void recvGetSCPQuorumSet(POGchainMessage const& msg);
-    void recvSCPQuorumSet(POGchainMessage const& msg);
-    void recvSCPMessage(POGchainMessage const& msg);
-    void recvGetSCPState(POGchainMessage const& msg);
+    void recvGetpogcvmQuorumSet(POGchainMessage const& msg);
+    void recvpogcvmQuorumSet(POGchainMessage const& msg);
+    void recvpogcvmMessage(POGchainMessage const& msg);
+    void recvGetpogcvmState(POGchainMessage const& msg);
 
     void sendHello();
     void sendAuth();
-    void sendSCPQuorumSet(SCPQuorumSetPtr qSet);
+    void sendpogcvmQuorumSet(pogcvmQuorumSetPtr qSet);
     void sendDontHave(MessageType type, uint256 const& itemID);
     void sendPeers();
     void sendError(ErrorCode error, std::string const& message);
@@ -220,7 +220,7 @@ class Peer : public std::enable_shared_from_this<Peer>,
     void sendGetTxSet(uint256 const& setID);
     void sendGetQuorumSet(uint256 const& setID);
     void sendGetPeers();
-    void sendGetScpState(uint32 ledgerSeq);
+    void sendGetpogcvmState(uint32 ledgerSeq);
     void sendErrorAndDrop(ErrorCode error, std::string const& message,
                           DropMode dropMode);
 

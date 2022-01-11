@@ -4,7 +4,7 @@
 
 #include "herder/QuorumTracker.h"
 #include "crypto/SecretKey.h"
-#include "scp/LocalNode.h"
+#include "pogcvm/LocalNode.h"
 #include "util/GlobalChecks.h"
 #include <Tracy.hpp>
 
@@ -32,7 +32,7 @@ QuorumTracker::isNodeDefinitelyInQuorum(NodeID const& id)
 // returning `false` in that context should be impossible and will be treated as
 // a logic error, throwing an exception.
 bool
-QuorumTracker::expand(NodeID const& id, SCPQuorumSetPtr qSet)
+QuorumTracker::expand(NodeID const& id, pogcvmQuorumSetPtr qSet)
 {
     ZoneScoped;
 
@@ -133,7 +133,7 @@ QuorumTracker::expand(NodeID const& id, SCPQuorumSetPtr qSet)
 }
 
 void
-QuorumTracker::rebuild(std::function<SCPQuorumSetPtr(NodeID const&)> lookup)
+QuorumTracker::rebuild(std::function<pogcvmQuorumSetPtr(NodeID const&)> lookup)
 {
     ZoneScoped;
 

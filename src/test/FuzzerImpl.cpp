@@ -1926,7 +1926,7 @@ OverlayFuzzer::initialize()
     SIMULATION_CREATE_NODE(10);
     SIMULATION_CREATE_NODE(11);
 
-    SCPQuorumSet qSet0;
+    pogcvmQuorumSet qSet0;
     qSet0.threshold = 2;
     qSet0.validators.push_back(v10NodeID);
     qSet0.validators.push_back(v11NodeID);

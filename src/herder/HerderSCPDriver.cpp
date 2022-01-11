@@ -2,7 +2,7 @@
 // under the Apache License, Version 2.0. See the COPYING file at the root
 // of this distribution or at http://www.apache.org/licenses/LICENSE-2.0
 
-#include "herder/HerderSCPDriver.h"
+#include "herder/HerderpogcvmDriver.h"
 #include "HerderUtils.h"
 #include "crypto/Hex.h"
 #include "crypto/SHA.h"
@@ -13,11 +13,11 @@
 #include "ledger/LedgerManager.h"
 #include "main/Application.h"
 #include "main/ErrorMessages.h"
-#include "scp/SCP.h"
-#include "scp/Slot.h"
+#include "pogcvm/pogcvm.h"
+#include "pogcvm/Slot.h"
 #include "util/Logging.h"
 #include "util/Math.h"
-#include "xdr/POGchain-SCP.h"
+#include "xdr/POGchain-pogcvm.h"
 #include "xdr/POGchain-ledger-entries.h"
 #include "xdr/POGchain-ledger.h"
 #include <Tracy.hpp>
@@ -33,7 +33,7 @@ namespace POGchain
 {
 
 Hash
-HerderSCPDriver::getHashOf(std::vector<xdr::opaque_vec<>> const& vals) const
+HerderpogcvmDriver::getHashOf(std::vector<xdr::opaque_vec<>> const& vals) const
 {
     SHA256 hasher;
     for (auto const& v : vals)
@@ -43,26 +43,26 @@ HerderSCPDriver::getHashOf(std::vector<xdr::opaque_vec<>> const& vals) const
     return hasher.finish();
 }
 
-HerderSCPDriver::SCPMetrics::SCPMetrics(Application& app)
+HerderpogcvmDriver::pogcvmMetrics::pogcvmMetrics(Application& app)
     : mEnvelopeSign(
-          app.getMetrics().NewMeter({"scp", "envelope", "sign"}, "envelope"))
-    , mValueValid(app.getMetrics().NewMeter({"scp", "value", "valid"}, "value"))
+          app.getMetrics().NewMeter({"pogcvm", "envelope", "sign"}, "envelope"))
+    , mValueValid(app.getMetrics().NewMeter({"pogcvm", "value", "valid"}, "value"))
     , mValueInvalid(
-          app.getMetrics().NewMeter({"scp", "value", "invalid"}, "value"))
+          app.getMetrics().NewMeter({"pogcvm", "value", "invalid"}, "value"))
     , mCombinedCandidates(app.getMetrics().NewMeter(
-          {"scp", "nomination", "combinecandidates"}, "value"))
+          {"pogcvm", "nomination", "combinecandidates"}, "value"))
     , mNominateToPrepare(
-          app.getMetrics().NewTimer({"scp", "timing", "nominated"}))
+          app.getMetrics().NewTimer({"pogcvm", "timing", "nominated"}))
     , mPrepareToExternalize(
-          app.getMetrics().NewTimer({"scp", "timing", "externalized"}))
+          app.getMetrics().NewTimer({"pogcvm", "timing", "externalized"}))
     , mFirstToSelfExternalizeLag(app.getMetrics().NewTimer(
-          {"scp", "timing", "first-to-self-externalize-lag"}))
+          {"pogcvm", "timing", "first-to-self-externalize-lag"}))
     , mSelfToOthersExternalizeLag(app.getMetrics().NewTimer(
-          {"scp", "timing", "self-to-others-externalize-lag"}))
+          {"pogcvm", "timing", "self-to-others-externalize-lag"}))
 {
 }
 
-HerderSCPDriver::HerderSCPDriver(Application& app, HerderImpl& herder,
+HerderpogcvmDriver::HerderpogcvmDriver(Application& app, HerderImpl& herder,
                                  Upgrades const& upgrades,
                                  PendingEnvelopes& pendingEnvelopes)
     : mApp{app}
@@ -70,46 +70,46 @@ HerderSCPDriver::HerderSCPDriver(Application& app, HerderImpl& herder,
     , mLedgerManager{mApp.getLedgerManager()}
     , mUpgrades{upgrades}
     , mPendingEnvelopes{pendingEnvelopes}
-    , mSCP{*this, mApp.getConfig().NODE_SEED.getPublicKey(),
+    , mpogcvm{*this, mApp.getConfig().NODE_SEED.getPublicKey(),
            mApp.getConfig().NODE_IS_VALIDATOR, mApp.getConfig().QUORUM_SET}
-    , mSCPMetrics{mApp}
+    , mpogcvmMetrics{mApp}
     , mNominateTimeout{mApp.getMetrics().NewHistogram(
-          {"scp", "timeout", "nominate"})}
+          {"pogcvm", "timeout", "nominate"})}
     , mPrepareTimeout{mApp.getMetrics().NewHistogram(
-          {"scp", "timeout", "prepare"})}
+          {"pogcvm", "timeout", "prepare"})}
     , mLedgerSeqNominating(0)
 {
 }
 
-HerderSCPDriver::~HerderSCPDriver()
+HerderpogcvmDriver::~HerderpogcvmDriver()
 {
 }
 
 void
-HerderSCPDriver::stateChanged()
+HerderpogcvmDriver::stateChanged()
 {
     mApp.syncOwnMetrics();
 }
 
 void
-HerderSCPDriver::bootstrap()
+HerderpogcvmDriver::bootstrap()
 {
     stateChanged();
-    clearSCPExecutionEvents();
+    clearpogcvmExecutionEvents();
 }
 
 // envelope handling
 
-class SCPHerderEnvelopeWrapper : public SCPEnvelopeWrapper
+class pogcvmHerderEnvelopeWrapper : public pogcvmEnvelopeWrapper
 {
     HerderImpl& mHerder;
 
-    SCPQuorumSetPtr mQSet;
+    pogcvmQuorumSetPtr mQSet;
     std::vector<TxSetFramePtr> mTxSets;
 
   public:
-    explicit SCPHerderEnvelopeWrapper(SCPEnvelope const& e, HerderImpl& herder)
-        : SCPEnvelopeWrapper(e), mHerder(herder)
+    explicit pogcvmHerderEnvelopeWrapper(pogcvmEnvelope const& e, HerderImpl& herder)
+        : pogcvmEnvelopeWrapper(e), mHerder(herder)
     {
         // attach everything we can to the wrapper
         auto qSetH = Slot::getCompanionQuorumSetHashFromStatement(e.statement);
@@ -117,7 +117,7 @@ class SCPHerderEnvelopeWrapper : public SCPEnvelopeWrapper
         if (!mQSet)
         {
             throw std::runtime_error(fmt::format(
-                FMT_STRING("SCPHerderEnvelopeWrapper: Wrapping an unknown "
+                FMT_STRING("pogcvmHerderEnvelopeWrapper: Wrapping an unknown "
                            "qset {} from envelope"),
                 hexAbbrev(qSetH)));
         }
@@ -132,7 +132,7 @@ class SCPHerderEnvelopeWrapper : public SCPEnvelopeWrapper
             else
             {
                 throw std::runtime_error(fmt::format(
-                    FMT_STRING("SCPHerderEnvelopeWrapper: Wrapping an unknown "
+                    FMT_STRING("pogcvmHerderEnvelopeWrapper: Wrapping an unknown "
                                "tx set {} from envelope"),
                     hexAbbrev(txSetH)));
             }
@@ -140,23 +140,23 @@ class SCPHerderEnvelopeWrapper : public SCPEnvelopeWrapper
     }
 };
 
-SCPEnvelopeWrapperPtr
-HerderSCPDriver::wrapEnvelope(SCPEnvelope const& envelope)
+pogcvmEnvelopeWrapperPtr
+HerderpogcvmDriver::wrapEnvelope(pogcvmEnvelope const& envelope)
 {
-    auto r = std::make_shared<SCPHerderEnvelopeWrapper>(envelope, mHerder);
+    auto r = std::make_shared<pogcvmHerderEnvelopeWrapper>(envelope, mHerder);
     return r;
 }
 
 void
-HerderSCPDriver::signEnvelope(SCPEnvelope& envelope)
+HerderpogcvmDriver::signEnvelope(pogcvmEnvelope& envelope)
 {
     ZoneScoped;
-    mSCPMetrics.mEnvelopeSign.Mark();
+    mpogcvmMetrics.mEnvelopeSign.Mark();
     mHerder.signEnvelope(mApp.getConfig().NODE_SEED, envelope);
 }
 
 void
-HerderSCPDriver::emitEnvelope(SCPEnvelope const& envelope)
+HerderpogcvmDriver::emitEnvelope(pogcvmEnvelope const& envelope)
 {
     ZoneScoped;
     mHerder.emitEnvelope(envelope);
@@ -165,7 +165,7 @@ HerderSCPDriver::emitEnvelope(SCPEnvelope const& envelope)
 // value validation
 
 bool
-HerderSCPDriver::checkCloseTime(uint64_t slotIndex, uint64_t lastCloseTime,
+HerderpogcvmDriver::checkCloseTime(uint64_t slotIndex, uint64_t lastCloseTime,
                                 POGchainValue const& b) const
 {
     // Check closeTime (not too old)
@@ -188,8 +188,8 @@ HerderSCPDriver::checkCloseTime(uint64_t slotIndex, uint64_t lastCloseTime,
     return true;
 }
 
-SCPDriver::ValidationLevel
-HerderSCPDriver::validateValueHelper(uint64_t slotIndex, POGchainValue const& b,
+pogcvmDriver::ValidationLevel
+HerderpogcvmDriver::validateValueHelper(uint64_t slotIndex, POGchainValue const& b,
                                      bool nomination) const
 {
     uint64_t lastCloseTime;
@@ -197,23 +197,23 @@ HerderSCPDriver::validateValueHelper(uint64_t slotIndex, POGchainValue const& b,
     if (b.ext.v() != POGchain_VALUE_SIGNED)
     {
         CLOG_TRACE(Herder,
-                   "HerderSCPDriver::validateValue i: {} invalid value type - "
+                   "HerderpogcvmDriver::validateValue i: {} invalid value type - "
                    "expected SIGNED",
                    slotIndex);
-        return SCPDriver::kInvalidValue;
+        return pogcvmDriver::kInvalidValue;
     }
 
     {
         ZoneNamedN(sigZone, "signature check", true);
         if (!mHerder.verifyPOGchainValueSignature(b))
         {
-            return SCPDriver::kInvalidValue;
+            return pogcvmDriver::kInvalidValue;
         }
     }
 
     auto const& lcl = mLedgerManager.getLastClosedLedgerHeader().header;
     // when checking close time, start with what we have locally
-    lastCloseTime = lcl.scpValue.closeTime;
+    lastCloseTime = lcl.pogcvmValue.closeTime;
 
     // if this value is not for our local state,
     // perform as many checks as we can
@@ -227,7 +227,7 @@ HerderSCPDriver::validateValueHelper(uint64_t slotIndex, POGchainValue const& b,
                 CLOG_TRACE(Herder,
                            "Got a bad close time for ledger {}, got {} vs {}",
                            slotIndex, b.closeTime, lastCloseTime);
-                return SCPDriver::kInvalidValue;
+                return pogcvmDriver::kInvalidValue;
             }
         }
         else if (slotIndex < lcl.ledgerSeq)
@@ -238,13 +238,13 @@ HerderSCPDriver::validateValueHelper(uint64_t slotIndex, POGchainValue const& b,
                 CLOG_TRACE(Herder,
                            "Got a bad close time for ledger {}, got {} vs {}",
                            slotIndex, b.closeTime, lastCloseTime);
-                return SCPDriver::kInvalidValue;
+                return pogcvmDriver::kInvalidValue;
             }
         }
         else if (!checkCloseTime(slotIndex, lastCloseTime, b))
         {
             // future messages must be valid compared to lastCloseTime
-            return SCPDriver::kInvalidValue;
+            return pogcvmDriver::kInvalidValue;
         }
 
         if (!mHerder.isTracking())
@@ -253,56 +253,56 @@ HerderSCPDriver::validateValueHelper(uint64_t slotIndex, POGchainValue const& b,
             // validate
             CLOG_TRACE(Herder, "MaybeValidValue (not tracking) for slot {}",
                        slotIndex);
-            return SCPDriver::kMaybeValidValue;
+            return pogcvmDriver::kMaybeValidValue;
         }
 
         // Check slotIndex.
-        if (mHerder.nextConsensusLedgerIndex() > slotIndex)
+        if (mHerder.nextvalidationLedgerIndex() > slotIndex)
         {
             // we already moved on from this slot
             // still send it through for emitting the final messages
             CLOG_TRACE(Herder,
                        "MaybeValidValue (already moved on) for slot {}, at {}",
-                       slotIndex, mHerder.nextConsensusLedgerIndex());
-            return SCPDriver::kMaybeValidValue;
+                       slotIndex, mHerder.nextvalidationLedgerIndex());
+            return pogcvmDriver::kMaybeValidValue;
         }
-        if (mHerder.nextConsensusLedgerIndex() < slotIndex)
+        if (mHerder.nextvalidationLedgerIndex() < slotIndex)
         {
             // this is probably a bug as "tracking" means we're processing
             // messages only for smaller slots
             CLOG_ERROR(
                 Herder,
-                "HerderSCPDriver::validateValue i: {} processing a future "
+                "HerderpogcvmDriver::validateValue i: {} processing a future "
                 "message while tracking {} ",
-                slotIndex, mHerder.trackingConsensusLedgerIndex());
-            return SCPDriver::kInvalidValue;
+                slotIndex, mHerder.trackingvalidationLedgerIndex());
+            return pogcvmDriver::kInvalidValue;
         }
 
         // when tracking, we use the tracked time for last close time
-        lastCloseTime = mHerder.trackingConsensusCloseTime();
+        lastCloseTime = mHerder.trackingvalidationCloseTime();
         if (!checkCloseTime(slotIndex, lastCloseTime, b))
         {
-            return SCPDriver::kInvalidValue;
+            return pogcvmDriver::kInvalidValue;
         }
 
         // this is as far as we can go if we don't have the state
         CLOG_TRACE(Herder,
                    "Can't validate locally, value may be valid for slot {}",
                    slotIndex);
-        return SCPDriver::kMaybeValidValue;
+        return pogcvmDriver::kMaybeValidValue;
     }
 
     // the value is against the local state, we can perform all checks
 
     if (!checkCloseTime(slotIndex, lastCloseTime, b))
     {
-        return SCPDriver::kInvalidValue;
+        return pogcvmDriver::kInvalidValue;
     }
 
     Hash const& txSetHash = b.txSetHash;
     TxSetFramePtr txSet = mPendingEnvelopes.getTxSet(txSetHash);
 
-    SCPDriver::ValidationLevel res;
+    pogcvmDriver::ValidationLevel res;
 
     auto closeTimeOffset = b.closeTime - lastCloseTime;
 
@@ -311,27 +311,27 @@ HerderSCPDriver::validateValueHelper(uint64_t slotIndex, POGchainValue const& b,
         CLOG_ERROR(Herder, "validateValue i:{} unknown txSet {}", slotIndex,
                    hexAbbrev(txSetHash));
 
-        res = SCPDriver::kInvalidValue;
+        res = pogcvmDriver::kInvalidValue;
     }
     else if (!txSet->checkValid(mApp, closeTimeOffset, closeTimeOffset))
     {
         CLOG_DEBUG(Herder,
-                   "HerderSCPDriver::validateValue i: {} invalid txSet {}",
+                   "HerderpogcvmDriver::validateValue i: {} invalid txSet {}",
                    slotIndex, hexAbbrev(txSetHash));
-        res = SCPDriver::kInvalidValue;
+        res = pogcvmDriver::kInvalidValue;
     }
     else
     {
         CLOG_DEBUG(Herder,
-                   "HerderSCPDriver::validateValue i: {} valid txSet {}",
+                   "HerderpogcvmDriver::validateValue i: {} valid txSet {}",
                    slotIndex, hexAbbrev(txSetHash));
-        res = SCPDriver::kFullyValidatedValue;
+        res = pogcvmDriver::kFullyValidatedValue;
     }
     return res;
 }
 
-SCPDriver::ValidationLevel
-HerderSCPDriver::validateValue(uint64_t slotIndex, Value const& value,
+pogcvmDriver::ValidationLevel
+HerderpogcvmDriver::validateValue(uint64_t slotIndex, Value const& value,
                                bool nomination)
 {
     ZoneScoped;
@@ -343,20 +343,20 @@ HerderSCPDriver::validateValue(uint64_t slotIndex, Value const& value,
     }
     catch (...)
     {
-        mSCPMetrics.mValueInvalid.Mark();
-        return SCPDriver::kInvalidValue;
+        mpogcvmMetrics.mValueInvalid.Mark();
+        return pogcvmDriver::kInvalidValue;
     }
 
-    SCPDriver::ValidationLevel res =
+    pogcvmDriver::ValidationLevel res =
         validateValueHelper(slotIndex, b, nomination);
-    if (res != SCPDriver::kInvalidValue)
+    if (res != pogcvmDriver::kInvalidValue)
     {
         auto const& lcl = mLedgerManager.getLastClosedLedgerHeader();
 
         LedgerUpgradeType lastUpgradeType = LEDGER_UPGRADE_VERSION;
         // check upgrades
         for (size_t i = 0;
-             i < b.upgrades.size() && res != SCPDriver::kInvalidValue; i++)
+             i < b.upgrades.size() && res != pogcvmDriver::kInvalidValue; i++)
         {
             LedgerUpgradeType thisUpgradeType;
             if (!mUpgrades.isValid(b.upgrades[i], thisUpgradeType, nomination,
@@ -364,17 +364,17 @@ HerderSCPDriver::validateValue(uint64_t slotIndex, Value const& value,
             {
                 CLOG_TRACE(
                     Herder,
-                    "HerderSCPDriver::validateValue invalid step at index {}",
+                    "HerderpogcvmDriver::validateValue invalid step at index {}",
                     i);
-                res = SCPDriver::kInvalidValue;
+                res = pogcvmDriver::kInvalidValue;
             }
             else if (i != 0 && (lastUpgradeType >= thisUpgradeType))
             {
                 CLOG_TRACE(Herder,
-                           "HerderSCPDriver::validateValue out of "
+                           "HerderpogcvmDriver::validateValue out of "
                            "order upgrade step at index {}",
                            i);
-                res = SCPDriver::kInvalidValue;
+                res = pogcvmDriver::kInvalidValue;
             }
 
             lastUpgradeType = thisUpgradeType;
@@ -383,17 +383,17 @@ HerderSCPDriver::validateValue(uint64_t slotIndex, Value const& value,
 
     if (res)
     {
-        mSCPMetrics.mValueValid.Mark();
+        mpogcvmMetrics.mValueValid.Mark();
     }
     else
     {
-        mSCPMetrics.mValueInvalid.Mark();
+        mpogcvmMetrics.mValueInvalid.Mark();
     }
     return res;
 }
 
 ValueWrapperPtr
-HerderSCPDriver::extractValidValue(uint64_t slotIndex, Value const& value)
+HerderpogcvmDriver::extractValidValue(uint64_t slotIndex, Value const& value)
 {
     ZoneScoped;
     POGchainValue b;
@@ -407,7 +407,7 @@ HerderSCPDriver::extractValidValue(uint64_t slotIndex, Value const& value)
     }
     ValueWrapperPtr res;
     if (validateValueHelper(slotIndex, b, true) ==
-        SCPDriver::kFullyValidatedValue)
+        pogcvmDriver::kFullyValidatedValue)
     {
         auto const& lcl = mLedgerManager.getLastClosedLedgerHeader();
 
@@ -435,13 +435,13 @@ HerderSCPDriver::extractValidValue(uint64_t slotIndex, Value const& value)
 // value marshaling
 
 std::string
-HerderSCPDriver::toShortString(NodeID const& pk) const
+HerderpogcvmDriver::toShortString(NodeID const& pk) const
 {
     return mApp.getConfig().toShortString(pk);
 }
 
 std::string
-HerderSCPDriver::getValueString(Value const& v) const
+HerderpogcvmDriver::getValueString(Value const& v) const
 {
     POGchainValue b;
     if (v.empty())
@@ -463,36 +463,36 @@ HerderSCPDriver::getValueString(Value const& v) const
 
 // timer handling
 void
-HerderSCPDriver::timerCallbackWrapper(uint64_t slotIndex, int timerID,
+HerderpogcvmDriver::timerCallbackWrapper(uint64_t slotIndex, int timerID,
                                       std::function<void()> cb)
 {
     // reschedule timers for future slots when tracking
-    if (mHerder.isTracking() && mHerder.nextConsensusLedgerIndex() != slotIndex)
+    if (mHerder.isTracking() && mHerder.nextvalidationLedgerIndex() != slotIndex)
     {
         CLOG_WARNING(
             Herder, "Herder rescheduled timer {} for slot {} with next slot {}",
-            timerID, slotIndex, mHerder.nextConsensusLedgerIndex());
+            timerID, slotIndex, mHerder.nextvalidationLedgerIndex());
         setupTimer(slotIndex, timerID, std::chrono::seconds(1),
-                   std::bind(&HerderSCPDriver::timerCallbackWrapper, this,
+                   std::bind(&HerderpogcvmDriver::timerCallbackWrapper, this,
                              slotIndex, timerID, cb));
     }
     else
     {
-        auto SCPTimingIt = mSCPExecutionTimes.find(slotIndex);
-        if (SCPTimingIt != mSCPExecutionTimes.end())
+        auto pogcvmTimingIt = mpogcvmExecutionTimes.find(slotIndex);
+        if (pogcvmTimingIt != mpogcvmExecutionTimes.end())
         {
-            auto& SCPTiming = SCPTimingIt->second;
+            auto& pogcvmTiming = pogcvmTimingIt->second;
             if (timerID == Slot::BALLOT_PROTOCOL_TIMER)
             {
                 // Timeout happened in between first prepare and externalize
-                ++SCPTiming.mPrepareTimeoutCount;
+                ++pogcvmTiming.mPrepareTimeoutCount;
             }
             else
             {
-                if (!SCPTiming.mPrepareStart)
+                if (!pogcvmTiming.mPrepareStart)
                 {
                     // Timeout happened between nominate and first prepare
-                    ++SCPTiming.mNominationTimeoutCount;
+                    ++pogcvmTiming.mNominationTimeoutCount;
                 }
             }
         }
@@ -502,18 +502,18 @@ HerderSCPDriver::timerCallbackWrapper(uint64_t slotIndex, int timerID,
 }
 
 void
-HerderSCPDriver::setupTimer(uint64_t slotIndex, int timerID,
+HerderpogcvmDriver::setupTimer(uint64_t slotIndex, int timerID,
                             std::chrono::milliseconds timeout,
                             std::function<void()> cb)
 {
     // don't setup timers for old slots
-    if (slotIndex <= mApp.getHerder().trackingConsensusLedgerIndex())
+    if (slotIndex <= mApp.getHerder().trackingvalidationLedgerIndex())
     {
-        mSCPTimers.erase(slotIndex);
+        mpogcvmTimers.erase(slotIndex);
         return;
     }
 
-    auto& slotTimers = mSCPTimers[slotIndex];
+    auto& slotTimers = mpogcvmTimers[slotIndex];
 
     auto it = slotTimers.find(timerID);
     if (it == slotTimers.end())
@@ -526,7 +526,7 @@ HerderSCPDriver::setupTimer(uint64_t slotIndex, int timerID,
     if (cb)
     {
         timer.expires_from_now(timeout);
-        timer.async_wait(std::bind(&HerderSCPDriver::timerCallbackWrapper, this,
+        timer.async_wait(std::bind(&HerderpogcvmDriver::timerCallbackWrapper, this,
                                    slotIndex, timerID, cb),
                          &VirtualTimer::onFailureNoop);
     }
@@ -573,12 +573,12 @@ compareTxSets(TxSetFrameConstPtr l, TxSetFrameConstPtr r, Hash const& lh,
 }
 
 ValueWrapperPtr
-HerderSCPDriver::combineCandidates(uint64_t slotIndex,
+HerderpogcvmDriver::combineCandidates(uint64_t slotIndex,
                                    ValueWrapperPtrSet const& candidates)
 {
     ZoneScoped;
     CLOG_DEBUG(Herder, "Combining {} candidates", candidates.size());
-    mSCPMetrics.mCombinedCandidates.Mark(candidates.size());
+    mpogcvmMetrics.mCombinedCandidates.Mark(candidates.size());
 
     std::map<LedgerUpgradeType, LedgerUpgrade> upgrades;
 
@@ -680,7 +680,7 @@ HerderSCPDriver::combineCandidates(uint64_t slotIndex,
 }
 
 bool
-HerderSCPDriver::toPOGchainValue(Value const& v, POGchainValue& sv)
+HerderpogcvmDriver::toPOGchainValue(Value const& v, POGchainValue& sv)
 {
     try
     {
@@ -694,13 +694,13 @@ HerderSCPDriver::toPOGchainValue(Value const& v, POGchainValue& sv)
 }
 
 void
-HerderSCPDriver::valueExternalized(uint64_t slotIndex, Value const& value)
+HerderpogcvmDriver::valueExternalized(uint64_t slotIndex, Value const& value)
 {
     ZoneScoped;
-    auto it = mSCPTimers.begin(); // cancel all timers below this slot
-    while (it != mSCPTimers.end() && it->first <= slotIndex)
+    auto it = mpogcvmTimers.begin(); // cancel all timers below this slot
+    while (it != mpogcvmTimers.end() && it->first <= slotIndex)
     {
-        it = mSCPTimers.erase(it);
+        it = mpogcvmTimers.erase(it);
     }
 
     POGchainValue b;
@@ -712,7 +712,7 @@ HerderSCPDriver::valueExternalized(uint64_t slotIndex, Value const& value)
     {
         // This may not be possible as all messages are validated and should
         // therefore contain a valid POGchainValue.
-        CLOG_ERROR(Herder, "HerderSCPDriver::valueExternalized "
+        CLOG_ERROR(Herder, "HerderpogcvmDriver::valueExternalized "
                            "Externalized POGchainValue malformed");
         CLOG_ERROR(Herder, "{}", REPORT_INTERNAL_BUG);
         // no point in continuing as 'b' contains garbage at this point
@@ -725,7 +725,7 @@ HerderSCPDriver::valueExternalized(uint64_t slotIndex, Value const& value)
     // in both cases do limited processing on older slots; more importantly,
     // deliver externalize events to LedgerManager
     bool isLatestSlot =
-        slotIndex > mApp.getHerder().trackingConsensusLedgerIndex();
+        slotIndex > mApp.getHerder().trackingvalidationLedgerIndex();
 
     // Only update tracking state when newer slot comes in
     if (isLatestSlot)
@@ -744,7 +744,7 @@ HerderSCPDriver::valueExternalized(uint64_t slotIndex, Value const& value)
             // in both cases, we want to stop nomination as:
             // either we're closing the current ledger (typical case)
             // or we're going to trigger catchup from history
-            mSCP.stopNomination(mLedgerSeqNominating);
+            mpogcvm.stopNomination(mLedgerSeqNominating);
             mCurrentValue.reset();
         }
 
@@ -753,18 +753,18 @@ HerderSCPDriver::valueExternalized(uint64_t slotIndex, Value const& value)
             stateChanged();
         }
 
-        mHerder.setTrackingSCPState(slotIndex, b, /* isTrackingNetwork */ true);
+        mHerder.setTrackingpogcvmState(slotIndex, b, /* isTrackingNetwork */ true);
 
         // record lag
-        recordSCPExternalizeEvent(slotIndex, mSCP.getLocalNodeID(), false);
+        recordpogcvmExternalizeEvent(slotIndex, mpogcvm.getLocalNodeID(), false);
 
-        recordSCPExecutionMetrics(slotIndex);
+        recordpogcvmExecutionMetrics(slotIndex);
 
         mHerder.valueExternalized(slotIndex, b, isLatestSlot);
 
         // update externalize time so that we don't include the time spent in
         // `mHerder.valueExternalized`
-        recordSCPExternalizeEvent(slotIndex, mSCP.getLocalNodeID(), true);
+        recordpogcvmExternalizeEvent(slotIndex, mpogcvm.getLocalNodeID(), true);
     }
     else
     {
@@ -773,10 +773,10 @@ HerderSCPDriver::valueExternalized(uint64_t slotIndex, Value const& value)
 }
 
 void
-HerderSCPDriver::logQuorumInformation(uint64_t index)
+HerderpogcvmDriver::logQuorumInformation(uint64_t index)
 {
     std::string res;
-    auto v = mApp.getHerder().getJsonQuorumInfo(mSCP.getLocalNodeID(), true,
+    auto v = mApp.getHerder().getJsonQuorumInfo(mpogcvm.getLocalNodeID(), true,
                                                 false, index);
     auto qset = v.get("qset", "");
     if (!qset.empty())
@@ -788,7 +788,7 @@ HerderSCPDriver::logQuorumInformation(uint64_t index)
 }
 
 void
-HerderSCPDriver::nominate(uint64_t slotIndex, POGchainValue const& value,
+HerderpogcvmDriver::nominate(uint64_t slotIndex, POGchainValue const& value,
                           TxSetFramePtr proposedSet,
                           POGchainValue const& previousValue)
 {
@@ -798,68 +798,68 @@ HerderSCPDriver::nominate(uint64_t slotIndex, POGchainValue const& value,
 
     auto valueHash = xdrSha256(mCurrentValue->getValue());
     CLOG_DEBUG(Herder,
-               "HerderSCPDriver::triggerNextLedger txSet.size: {} "
+               "HerderpogcvmDriver::triggerNextLedger txSet.size: {} "
                "previousLedgerHash: {} value: {} slot: {}",
                proposedSet->mTransactions.size(),
                hexAbbrev(proposedSet->previousLedgerHash()),
                hexAbbrev(valueHash), slotIndex);
 
     auto prevValue = xdr::xdr_to_opaque(previousValue);
-    mSCP.nominate(slotIndex, mCurrentValue, prevValue);
+    mpogcvm.nominate(slotIndex, mCurrentValue, prevValue);
 }
 
-SCPQuorumSetPtr
-HerderSCPDriver::getQSet(Hash const& qSetHash)
+pogcvmQuorumSetPtr
+HerderpogcvmDriver::getQSet(Hash const& qSetHash)
 {
     return mPendingEnvelopes.getQSet(qSetHash);
 }
 
 void
-HerderSCPDriver::ballotDidHearFromQuorum(uint64_t, SCPBallot const&)
+HerderpogcvmDriver::ballotDidHearFromQuorum(uint64_t, pogcvmBallot const&)
 {
 }
 
 void
-HerderSCPDriver::nominatingValue(uint64_t slotIndex, Value const& value)
+HerderpogcvmDriver::nominatingValue(uint64_t slotIndex, Value const& value)
 {
     CLOG_DEBUG(Herder, "nominatingValue i:{} v: {}", slotIndex,
                getValueString(value));
 }
 
 void
-HerderSCPDriver::updatedCandidateValue(uint64_t slotIndex, Value const& value)
+HerderpogcvmDriver::updatedCandidateValue(uint64_t slotIndex, Value const& value)
 {
 }
 
 void
-HerderSCPDriver::startedBallotProtocol(uint64_t slotIndex,
-                                       SCPBallot const& ballot)
+HerderpogcvmDriver::startedBallotProtocol(uint64_t slotIndex,
+                                       pogcvmBallot const& ballot)
 {
-    recordSCPEvent(slotIndex, false);
+    recordpogcvmEvent(slotIndex, false);
 }
 void
-HerderSCPDriver::acceptedBallotPrepared(uint64_t slotIndex,
-                                        SCPBallot const& ballot)
-{
-}
-
-void
-HerderSCPDriver::confirmedBallotPrepared(uint64_t slotIndex,
-                                         SCPBallot const& ballot)
+HerderpogcvmDriver::acceptedBallotPrepared(uint64_t slotIndex,
+                                        pogcvmBallot const& ballot)
 {
 }
 
 void
-HerderSCPDriver::acceptedCommit(uint64_t slotIndex, SCPBallot const& ballot)
+HerderpogcvmDriver::confirmedBallotPrepared(uint64_t slotIndex,
+                                         pogcvmBallot const& ballot)
+{
+}
+
+void
+HerderpogcvmDriver::acceptedCommit(uint64_t slotIndex, pogcvmBallot const& ballot)
 {
 }
 
 std::optional<VirtualClock::time_point>
-HerderSCPDriver::getPrepareStart(uint64_t slotIndex)
+HerderpogcvmDriver::getPrepareStart(uint64_t slotIndex)
 {
     std::optional<VirtualClock::time_point> res;
-    auto it = mSCPExecutionTimes.find(slotIndex);
-    if (it != mSCPExecutionTimes.end())
+    auto it = mpogcvmExecutionTimes.find(slotIndex);
+    if (it != mpogcvmExecutionTimes.end())
     {
         res = it->second.mPrepareStart;
     }
@@ -867,13 +867,13 @@ HerderSCPDriver::getPrepareStart(uint64_t slotIndex)
 }
 
 Json::Value
-HerderSCPDriver::getQsetLagInfo(bool summary, bool fullKeys)
+HerderpogcvmDriver::getQsetLagInfo(bool summary, bool fullKeys)
 {
     Json::Value ret;
     double totalLag = 0;
     int numNodes = 0;
 
-    auto qSet = getSCP().getLocalQuorumSet();
+    auto qSet = getpogcvm().getLocalQuorumSet();
     LocalNode::forAllNodes(qSet, [&](NodeID const& n) {
         auto lag = getExternalizeLag(n);
         if (lag > 0)
@@ -901,7 +901,7 @@ HerderSCPDriver::getQsetLagInfo(bool summary, bool fullKeys)
 }
 
 double
-HerderSCPDriver::getExternalizeLag(NodeID const& id) const
+HerderpogcvmDriver::getExternalizeLag(NodeID const& id) const
 {
     auto n = mQSetLag.find(id);
 
@@ -914,10 +914,10 @@ HerderSCPDriver::getExternalizeLag(NodeID const& id) const
 }
 
 void
-HerderSCPDriver::recordSCPEvent(uint64_t slotIndex, bool isNomination)
+HerderpogcvmDriver::recordpogcvmEvent(uint64_t slotIndex, bool isNomination)
 {
 
-    auto& timing = mSCPExecutionTimes[slotIndex];
+    auto& timing = mpogcvmExecutionTimes[slotIndex];
     VirtualClock::time_point start = mApp.getClock().now();
 
     if (isNomination)
@@ -933,10 +933,10 @@ HerderSCPDriver::recordSCPEvent(uint64_t slotIndex, bool isNomination)
 }
 
 void
-HerderSCPDriver::recordSCPExternalizeEvent(uint64_t slotIndex, NodeID const& id,
+HerderpogcvmDriver::recordpogcvmExternalizeEvent(uint64_t slotIndex, NodeID const& id,
                                            bool forceUpdateSelf)
 {
-    auto& timing = mSCPExecutionTimes[slotIndex];
+    auto& timing = mpogcvmExecutionTimes[slotIndex];
     auto now = mApp.getClock().now();
 
     if (!timing.mFirstExternalize)
@@ -945,12 +945,12 @@ HerderSCPDriver::recordSCPExternalizeEvent(uint64_t slotIndex, NodeID const& id,
             std::make_optional<VirtualClock::time_point>(now);
     }
 
-    if (id == mSCP.getLocalNodeID())
+    if (id == mpogcvm.getLocalNodeID())
     {
         if (!timing.mSelfExternalize)
         {
             recordLogTiming(*timing.mFirstExternalize, now,
-                            mSCPMetrics.mFirstToSelfExternalizeLag,
+                            mpogcvmMetrics.mFirstToSelfExternalizeLag,
                             "first to self externalize lag",
                             std::chrono::nanoseconds::zero(), slotIndex);
         }
@@ -967,7 +967,7 @@ HerderSCPDriver::recordSCPExternalizeEvent(uint64_t slotIndex, NodeID const& id,
         {
             recordLogTiming(
                 *timing.mSelfExternalize, now,
-                mSCPMetrics.mSelfToOthersExternalizeLag,
+                mpogcvmMetrics.mSelfToOthersExternalizeLag,
                 fmt::format(FMT_STRING("self to {} externalize lag"),
                             toShortString(id)),
                 std::chrono::nanoseconds::zero(), slotIndex);
@@ -983,7 +983,7 @@ HerderSCPDriver::recordSCPExternalizeEvent(uint64_t slotIndex, NodeID const& id,
 }
 
 void
-HerderSCPDriver::recordLogTiming(VirtualClock::time_point start,
+HerderpogcvmDriver::recordLogTiming(VirtualClock::time_point start,
                                  VirtualClock::time_point end,
                                  medida::Timer& timer,
                                  std::string const& logStr,
@@ -1002,7 +1002,7 @@ HerderSCPDriver::recordLogTiming(VirtualClock::time_point start,
 };
 
 void
-HerderSCPDriver::recordSCPExecutionMetrics(uint64_t slotIndex)
+HerderpogcvmDriver::recordpogcvmExecutionMetrics(uint64_t slotIndex)
 {
     auto externalizeStart = mApp.getClock().now();
 
@@ -1010,66 +1010,66 @@ HerderSCPDriver::recordSCPExecutionMetrics(uint64_t slotIndex)
     auto& qset = mApp.getConfig().QUORUM_SET;
     auto isSingleNode = qset.innerSets.size() == 0 &&
                         qset.validators.size() == 1 &&
-                        qset.validators[0] == getSCP().getLocalNodeID();
+                        qset.validators[0] == getpogcvm().getLocalNodeID();
     auto threshold = isSingleNode ? std::chrono::nanoseconds::zero()
                                   : Herder::TIMERS_THRESHOLD_NANOSEC;
 
-    auto SCPTimingIt = mSCPExecutionTimes.find(slotIndex);
-    if (SCPTimingIt == mSCPExecutionTimes.end())
+    auto pogcvmTimingIt = mpogcvmExecutionTimes.find(slotIndex);
+    if (pogcvmTimingIt == mpogcvmExecutionTimes.end())
     {
         return;
     }
 
-    auto& SCPTiming = SCPTimingIt->second;
+    auto& pogcvmTiming = pogcvmTimingIt->second;
 
-    mNominateTimeout.Update(SCPTiming.mNominationTimeoutCount);
-    mPrepareTimeout.Update(SCPTiming.mPrepareTimeoutCount);
+    mNominateTimeout.Update(pogcvmTiming.mNominationTimeoutCount);
+    mPrepareTimeout.Update(pogcvmTiming.mPrepareTimeoutCount);
 
     // Compute nomination time
-    if (SCPTiming.mNominationStart && SCPTiming.mPrepareStart)
+    if (pogcvmTiming.mNominationStart && pogcvmTiming.mPrepareStart)
     {
-        recordLogTiming(*SCPTiming.mNominationStart, *SCPTiming.mPrepareStart,
-                        mSCPMetrics.mNominateToPrepare, "Nominate", threshold,
+        recordLogTiming(*pogcvmTiming.mNominationStart, *pogcvmTiming.mPrepareStart,
+                        mpogcvmMetrics.mNominateToPrepare, "Nominate", threshold,
                         slotIndex);
     }
 
     // Compute prepare time
-    if (SCPTiming.mPrepareStart)
+    if (pogcvmTiming.mPrepareStart)
     {
-        recordLogTiming(*SCPTiming.mPrepareStart, externalizeStart,
-                        mSCPMetrics.mPrepareToExternalize, "Prepare", threshold,
+        recordLogTiming(*pogcvmTiming.mPrepareStart, externalizeStart,
+                        mpogcvmMetrics.mPrepareToExternalize, "Prepare", threshold,
                         slotIndex);
     }
 }
 
 void
-HerderSCPDriver::purgeSlots(uint64_t maxSlotIndex)
+HerderpogcvmDriver::purgeSlots(uint64_t maxSlotIndex)
 {
     // Clean up timings map
-    auto it = mSCPExecutionTimes.begin();
-    while (it != mSCPExecutionTimes.end() && it->first < maxSlotIndex)
+    auto it = mpogcvmExecutionTimes.begin();
+    while (it != mpogcvmExecutionTimes.end() && it->first < maxSlotIndex)
     {
-        it = mSCPExecutionTimes.erase(it);
+        it = mpogcvmExecutionTimes.erase(it);
     }
 
-    getSCP().purgeSlots(maxSlotIndex);
+    getpogcvm().purgeSlots(maxSlotIndex);
 }
 
 void
-HerderSCPDriver::clearSCPExecutionEvents()
+HerderpogcvmDriver::clearpogcvmExecutionEvents()
 {
-    mSCPExecutionTimes.clear();
+    mpogcvmExecutionTimes.clear();
 }
 
 // Value handling
-class SCPHerderValueWrapper : public ValueWrapper
+class pogcvmHerderValueWrapper : public ValueWrapper
 {
     HerderImpl& mHerder;
 
     TxSetFramePtr mTxSet;
 
   public:
-    explicit SCPHerderValueWrapper(POGchainValue const& sv, Value const& value,
+    explicit pogcvmHerderValueWrapper(POGchainValue const& sv, Value const& value,
                                    HerderImpl& herder)
         : ValueWrapper(value), mHerder(herder)
     {
@@ -1078,32 +1078,32 @@ class SCPHerderValueWrapper : public ValueWrapper
         {
             throw std::runtime_error(fmt::format(
                 FMT_STRING(
-                    "SCPHerderValueWrapper tried to bind an unknown tx set {}"),
+                    "pogcvmHerderValueWrapper tried to bind an unknown tx set {}"),
                 hexAbbrev(sv.txSetHash)));
         }
     }
 };
 
 ValueWrapperPtr
-HerderSCPDriver::wrapValue(Value const& val)
+HerderpogcvmDriver::wrapValue(Value const& val)
 {
     POGchainValue sv;
-    auto b = mHerder.getHerderSCPDriver().toPOGchainValue(val, sv);
+    auto b = mHerder.getHerderpogcvmDriver().toPOGchainValue(val, sv);
     if (!b)
     {
         throw std::runtime_error(
-            fmt::format(FMT_STRING("Invalid value in SCPHerderValueWrapper {}"),
+            fmt::format(FMT_STRING("Invalid value in pogcvmHerderValueWrapper {}"),
                         binToHex(val)));
     }
-    auto res = std::make_shared<SCPHerderValueWrapper>(sv, val, mHerder);
+    auto res = std::make_shared<pogcvmHerderValueWrapper>(sv, val, mHerder);
     return res;
 }
 
 ValueWrapperPtr
-HerderSCPDriver::wrapPOGchainValue(POGchainValue const& sv)
+HerderpogcvmDriver::wrapPOGchainValue(POGchainValue const& sv)
 {
     auto val = xdr::xdr_to_opaque(sv);
-    auto res = std::make_shared<SCPHerderValueWrapper>(sv, val, mHerder);
+    auto res = std::make_shared<pogcvmHerderValueWrapper>(sv, val, mHerder);
     return res;
 }
 }

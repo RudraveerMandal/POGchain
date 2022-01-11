@@ -128,11 +128,11 @@
  *
  * The desynchronized peer commences catchup at some ledger INIT, when it
  * realizes INIT > LAST+1 and that it is "out of sync". This begins "catchup
- * mode", but we expect that during catchup TIP -- the consensus view of the
+ * mode", but we expect that during catchup TIP -- the validation view of the
  * other peers -- will continue advancing beyond INIT. The peer therefore
  * buffers new ledger-close events during catchup, as TIP advances. This set of
  * ledgers -- the segment [INIT, TIP] -- is stored in memory, in the
- * LedgerManager (::mSyncingLedgers) and extended as SCP hears of new closes,
+ * LedgerManager (::mSyncingLedgers) and extended as pogcvm hears of new closes,
  * until catchup is complete.
  *
  * The catchup system then rounds up from INIT to NEXT, which is the next

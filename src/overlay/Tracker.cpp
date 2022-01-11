@@ -42,7 +42,7 @@ Tracker::~Tracker()
     cancel();
 }
 
-SCPEnvelope
+pogcvmEnvelope
 Tracker::pop()
 {
     auto env = mWaitingEnvelopes.back().second;
@@ -211,16 +211,16 @@ Tracker::tryNextPeer()
                       VirtualTimer::onFailureNoop);
 }
 
-static std::function<bool(std::pair<Hash, SCPEnvelope> const&)>
-matchEnvelope(SCPEnvelope const& env)
+static std::function<bool(std::pair<Hash, pogcvmEnvelope> const&)>
+matchEnvelope(pogcvmEnvelope const& env)
 {
-    return [&env](std::pair<Hash, SCPEnvelope> const& x) {
+    return [&env](std::pair<Hash, pogcvmEnvelope> const& x) {
         return x.second == env;
     };
 }
 
 void
-Tracker::listen(const SCPEnvelope& env)
+Tracker::listen(const pogcvmEnvelope& env)
 {
     ZoneScoped;
     mLastSeenSlotIndex = std::max(env.statement.slotIndex, mLastSeenSlotIndex);
@@ -235,7 +235,7 @@ Tracker::listen(const SCPEnvelope& env)
     }
 
     POGchainMessage m;
-    m.type(SCP_MESSAGE);
+    m.type(pogcvm_MESSAGE);
     m.envelope() = env;
 
     // NB: hash here is BLAKE2 of POGchainMessage because that is
@@ -246,7 +246,7 @@ Tracker::listen(const SCPEnvelope& env)
 }
 
 void
-Tracker::discard(const SCPEnvelope& env)
+Tracker::discard(const pogcvmEnvelope& env)
 {
     ZoneScoped;
     auto matcher = matchEnvelope(env);

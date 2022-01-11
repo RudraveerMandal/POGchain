@@ -214,7 +214,7 @@ CreateClaimableBalanceOpFrame::doApply(AbstractLedgerTxn& ltx)
     for (auto& claimant : claimableBalanceEntry.claimants)
     {
         updatePredicatesForApply(claimant.v0().predicate,
-                                 header.current().scpValue.closeTime);
+                                 header.current().pogcvmValue.closeTime);
     }
 
     switch (createEntryWithPossibleSponsorship(ltx, header, newClaimableBalance,

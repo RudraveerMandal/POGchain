@@ -91,7 +91,7 @@ simulateUpgrade(std::vector<LedgerUpgradeNode> const& nodes,
     // first two only depend on each other
     // this allows to test for v-blocking properties
     // on the 3rd node
-    auto qSet = SCPQuorumSet{};
+    auto qSet = pogcvmQuorumSet{};
     qSet.threshold = 2;
     qSet.validators.push_back(keys[0].getPublicKey());
     qSet.validators.push_back(keys[1].getPublicKey());
@@ -231,7 +231,7 @@ testListUpgrades(VirtualClock::system_time_point preferredUpgradeDatetime,
     header.baseFee = cfg.TESTING_UPGRADE_DESIRED_FEE;
     header.baseReserve = cfg.TESTING_UPGRADE_RESERVE;
     header.maxTxSetSize = cfg.TESTING_UPGRADE_MAX_TX_SET_SIZE;
-    header.scpValue.closeTime = VirtualClock::to_time_t(genesis(0, 0));
+    header.pogcvmValue.closeTime = VirtualClock::to_time_t(genesis(0, 0));
 
     auto protocolVersionUpgrade =
         makeProtocolVersionUpgrade(cfg.LEDGER_PROTOCOL_VERSION);
@@ -315,7 +315,7 @@ testValidateUpgrades(VirtualClock::system_time_point preferredUpgradeDatetime,
     // a ledgerheader used for base cases
     LedgerHeader baseLH;
     baseLH.ledgerVersion = 8;
-    baseLH.scpValue.closeTime = checkTime;
+    baseLH.pogcvmValue.closeTime = checkTime;
 
     auto checkWith = [&](bool nomination) {
         SECTION("invalid upgrade data")
@@ -1654,7 +1654,7 @@ TEST_CASE("upgrade to version 13", "[upgrades]")
             herder.makePOGchainValue(emptyTxSet->getContentsHash(), 2,
                                     xdr::xvector<UpgradeType, 6>({upgrade}),
                                     app->getConfig().NODE_SEED);
-        herder.getHerderSCPDriver().valueExternalized(ledgerSeq,
+        herder.getHerderpogcvmDriver().valueExternalized(ledgerSeq,
                                                       xdr::xdr_to_opaque(sv));
     }
 
@@ -2285,13 +2285,13 @@ TEST_CASE("validate upgrade expiration logic", "[upgrades]")
 
     SECTION("remove expired upgrades")
     {
-        header.scpValue.closeTime = VirtualClock::to_time_t(
+        header.pogcvmValue.closeTime = VirtualClock::to_time_t(
             cfg.TESTING_UPGRADE_DATETIME + Upgrades::UPDGRADE_EXPIRATION_HOURS);
 
         bool updated = false;
         auto upgrades = Upgrades{cfg}.removeUpgrades(
-            header.scpValue.upgrades.begin(), header.scpValue.upgrades.end(),
-            header.scpValue.closeTime, updated);
+            header.pogcvmValue.upgrades.begin(), header.pogcvmValue.upgrades.end(),
+            header.pogcvmValue.closeTime, updated);
 
         REQUIRE(updated);
         REQUIRE(!upgrades.mProtocolVersion);
@@ -2303,14 +2303,14 @@ TEST_CASE("validate upgrade expiration logic", "[upgrades]")
 
     SECTION("upgrades not yet expired")
     {
-        header.scpValue.closeTime = VirtualClock::to_time_t(
+        header.pogcvmValue.closeTime = VirtualClock::to_time_t(
             cfg.TESTING_UPGRADE_DATETIME + Upgrades::UPDGRADE_EXPIRATION_HOURS -
             std::chrono::seconds(1));
 
         bool updated = false;
         auto upgrades = Upgrades{cfg}.removeUpgrades(
-            header.scpValue.upgrades.begin(), header.scpValue.upgrades.end(),
-            header.scpValue.closeTime, updated);
+            header.pogcvmValue.upgrades.begin(), header.pogcvmValue.upgrades.end(),
+            header.pogcvmValue.closeTime, updated);
 
         REQUIRE(!updated);
         REQUIRE(upgrades.mProtocolVersion);

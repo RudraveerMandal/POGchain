@@ -39,7 +39,7 @@ using WorkSeqPtr = std::shared_ptr<WorkSequence>;
 // transactions (as in COMPLETE and RECENT catchups).
 //
 // After that, catchup is done and node can replay buffered ledgers and take
-// part in consensus protocol.
+// part in validation protocol.
 
 class CatchupWork : public Work
 {

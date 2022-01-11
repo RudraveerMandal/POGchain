@@ -6,7 +6,7 @@
 // LOG_PARTITION(name) to something that uses the name then include this file.
 
 LOG_PARTITION(Fs)
-LOG_PARTITION(SCP)
+LOG_PARTITION(pogcvm)
 LOG_PARTITION(Bucket)
 LOG_PARTITION(Database)
 LOG_PARTITION(History)

@@ -7,14 +7,14 @@
 #include "crypto/SecretKey.h"
 #include "lib/catch.hpp"
 #include "main/Config.h"
-#include "scp/QuorumSetUtils.h"
-#include "xdr/POGchain-SCP.h"
+#include "pogcvm/QuorumSetUtils.h"
+#include "xdr/POGchain-pogcvm.h"
 #include <algorithm>
 
 namespace POGchain
 {
 
-TEST_CASE("sane quorum set", "[scp][quorumset]")
+TEST_CASE("sane quorum set", "[pogcvm][quorumset]")
 {
     auto makePublicKey = [](int i) {
         auto hash = sha256("NODE_SEED_" + std::to_string(i));
@@ -23,7 +23,7 @@ TEST_CASE("sane quorum set", "[scp][quorumset]")
     };
 
     auto makeSingleton = [](const PublicKey& key) {
-        auto result = SCPQuorumSet{};
+        auto result = pogcvmQuorumSet{};
         result.threshold = 1;
         result.validators.push_back(key);
         return result;
@@ -36,8 +36,8 @@ TEST_CASE("sane quorum set", "[scp][quorumset]")
     }
     std::sort(keys.begin(), keys.end());
 
-    auto check = [&](SCPQuorumSet const& qSetCheck, bool expected,
-                     SCPQuorumSet const& expectedSelfQSet) {
+    auto check = [&](pogcvmQuorumSet const& qSetCheck, bool expected,
+                     pogcvmQuorumSet const& expectedSelfQSet) {
         // first, without normalization
         char const* errString;
         REQUIRE(expected == isQuorumSetSane(qSetCheck, false, errString));
@@ -54,7 +54,7 @@ TEST_CASE("sane quorum set", "[scp][quorumset]")
 
     SECTION("{ t: 0 }")
     {
-        auto qSet = SCPQuorumSet{};
+        auto qSet = pogcvmQuorumSet{};
         qSet.threshold = 0;
         check(qSet, false, qSet);
     }
@@ -82,7 +82,7 @@ TEST_CASE("sane quorum set", "[scp][quorumset]")
 
     SECTION("{ t: 1, v0, { t: 1, v1 } -> { t:1, v0, v1 }")
     {
-        auto qSet = SCPQuorumSet{};
+        auto qSet = pogcvmQuorumSet{};
         qSet.threshold = 1;
         qSet.validators.push_back(keys[0]);
 
@@ -99,7 +99,7 @@ TEST_CASE("sane quorum set", "[scp][quorumset]")
     SECTION("{ t: 1, v0, { t: 1, v1 }, { t: 2, v2 } } -> { t:1, v0, v1, { t: "
             "2, v2 } }")
     {
-        auto qSet = SCPQuorumSet{};
+        auto qSet = pogcvmQuorumSet{};
         qSet.threshold = 1;
         qSet.validators.push_back(keys[0]);
 
@@ -117,7 +117,7 @@ TEST_CASE("sane quorum set", "[scp][quorumset]")
         check(qSet, false, qSelfSet);
     }
 
-    auto validMultipleNodes = SCPQuorumSet{};
+    auto validMultipleNodes = pogcvmQuorumSet{};
     validMultipleNodes.threshold = 1;
     validMultipleNodes.validators.push_back(keys[0]);
     validMultipleNodes.innerSets.push_back({});
@@ -128,7 +128,7 @@ TEST_CASE("sane quorum set", "[scp][quorumset]")
     validMultipleNodes.innerSets.back().validators.push_back(keys[2]);
     validMultipleNodes.innerSets.back().validators.push_back(keys[3]);
 
-    auto validMultipleNodesNormalized = SCPQuorumSet{};
+    auto validMultipleNodesNormalized = pogcvmQuorumSet{};
     validMultipleNodesNormalized.threshold = 1;
     validMultipleNodesNormalized.validators.push_back(keys[0]);
     validMultipleNodesNormalized.validators.push_back(keys[1]);
@@ -146,7 +146,7 @@ TEST_CASE("sane quorum set", "[scp][quorumset]")
     SECTION("{ t: 1, { t: 1, v0, { t: 1, v1 }, { t: 1, v2, v3 } } } -> { t:1, "
             "v0, v1, { t: 1, v2, v3 } }")
     {
-        auto containingSet = SCPQuorumSet{};
+        auto containingSet = pogcvmQuorumSet{};
         containingSet.threshold = 1;
         containingSet.innerSets.push_back(validMultipleNodes);
 
@@ -176,7 +176,7 @@ TEST_CASE("sane quorum set", "[scp][quorumset]")
 
     auto testNestingLevel = [&makeSingleton, &keys, &check](int nestingLevel,
                                                             bool expected) {
-        std::vector<SCPQuorumSet> qSets;
+        std::vector<pogcvmQuorumSet> qSets;
         for (int i = 0; i <= nestingLevel; i++)
         {
             qSets.push_back(makeSingleton(keys[i]));
@@ -212,7 +212,7 @@ TEST_CASE("sane quorum set", "[scp][quorumset]")
 
     SECTION("{ t: 1, v0..v999 } -> { t: 1, v0..v999 }")
     {
-        auto qSet = SCPQuorumSet{};
+        auto qSet = pogcvmQuorumSet{};
         qSet.threshold = 1;
         for (auto i = 0; i < 1000; i++)
             qSet.validators.push_back(keys[i]);
@@ -222,7 +222,7 @@ TEST_CASE("sane quorum set", "[scp][quorumset]")
 
     SECTION("{ t: 1, v0..v1000 } -> too big")
     {
-        auto qSet = SCPQuorumSet{};
+        auto qSet = pogcvmQuorumSet{};
         qSet.threshold = 1;
         for (auto i = 0; i < 1001; i++)
             qSet.validators.push_back(keys[i]);
@@ -233,7 +233,7 @@ TEST_CASE("sane quorum set", "[scp][quorumset]")
     SECTION("{ t: 1, v0, { t: 1, v1..v100 }, { t: 1, v101..v200} ... { t: 1, "
             "v901..v1000} -> too big")
     {
-        auto qSet = SCPQuorumSet{};
+        auto qSet = pogcvmQuorumSet{};
         qSet.threshold = 1;
         qSet.validators.push_back(keys[0]);
         for (auto i = 0; i < 10; i++)

@@ -76,7 +76,7 @@
     <Filter Include="herder\tests">
       <UniqueIdentifier>{eda15f5e-847b-4167-93ae-e508b7fc009b}</UniqueIdentifier>
     </Filter>
-    <Filter Include="scp">
+    <Filter Include="pogcvm">
       <UniqueIdentifier>{0cf920e3-5232-4c4e-8b79-25ec2c8f86ce}</UniqueIdentifier>
     </Filter>
     <Filter Include="herder\docs">
@@ -85,7 +85,7 @@
     <Filter Include="xdr\generated">
       <UniqueIdentifier>{02035318-e72a-43b0-a250-8b3af9fb4bbf}</UniqueIdentifier>
     </Filter>
-    <Filter Include="scp\tests">
+    <Filter Include="pogcvm\tests">
       <UniqueIdentifier>{34037c6d-2c07-471b-8dde-6b69003d4ca7}</UniqueIdentifier>
     </Filter>
     <Filter Include="overlay\tests">
@@ -252,11 +252,11 @@
     <ClCompile Include="..\..\src\simulation\test\LoadGeneratorTests.cpp">
       <Filter>simulation</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\scp\SCP.cpp">
-      <Filter>scp</Filter>
+    <ClCompile Include="..\..\src\pogcvm\pogcvm.cpp">
+      <Filter>pogcvm</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\scp\Slot.cpp">
-      <Filter>scp</Filter>
+    <ClCompile Include="..\..\src\pogcvm\Slot.cpp">
+      <Filter>pogcvm</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\util\Fs.cpp">
       <Filter>util</Filter>
@@ -270,17 +270,17 @@
     <ClCompile Include="..\..\src\simulation\LoadGenerator.cpp">
       <Filter>simulation</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\scp\BallotProtocol.cpp">
-      <Filter>scp</Filter>
+    <ClCompile Include="..\..\src\pogcvm\BallotProtocol.cpp">
+      <Filter>pogcvm</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\scp\NominationProtocol.cpp">
-      <Filter>scp</Filter>
+    <ClCompile Include="..\..\src\pogcvm\NominationProtocol.cpp">
+      <Filter>pogcvm</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\scp\LocalNode.cpp">
-      <Filter>scp</Filter>
+    <ClCompile Include="..\..\src\pogcvm\LocalNode.cpp">
+      <Filter>pogcvm</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\scp\SCPDriver.cpp">
-      <Filter>scp</Filter>
+    <ClCompile Include="..\..\src\pogcvm\pogcvmDriver.cpp">
+      <Filter>pogcvm</Filter>
     </ClCompile>
     <ClCompile Include="..\..\lib\util\crc16.cpp">
       <Filter>util</Filter>
@@ -306,8 +306,8 @@
     <ClCompile Include="..\..\src\util\StatusManager.cpp">
       <Filter>util</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\scp\QuorumSetUtils.cpp">
-      <Filter>scp</Filter>
+    <ClCompile Include="..\..\src\pogcvm\QuorumSetUtils.cpp">
+      <Filter>pogcvm</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\test\test.cpp">
       <Filter>test</Filter>
@@ -510,7 +510,7 @@
     <ClCompile Include="..\..\src\herder\HerderPersistenceImpl.cpp">
       <Filter>herder</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\herder\HerderSCPDriver.cpp">
+    <ClCompile Include="..\..\src\herder\HerderpogcvmDriver.cpp">
       <Filter>herder</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\herder\HerderUtils.cpp">
@@ -717,14 +717,14 @@
     <ClCompile Include="..\..\src\process\test\ProcessTests.cpp">
       <Filter>process\tests</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\scp\test\QuorumSetTests.cpp">
-      <Filter>scp\tests</Filter>
+    <ClCompile Include="..\..\src\pogcvm\test\QuorumSetTests.cpp">
+      <Filter>pogcvm\tests</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\scp\test\SCPTests.cpp">
-      <Filter>scp\tests</Filter>
+    <ClCompile Include="..\..\src\pogcvm\test\pogcvmTests.cpp">
+      <Filter>pogcvm\tests</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\scp\test\SCPUnitTests.cpp">
-      <Filter>scp\tests</Filter>
+    <ClCompile Include="..\..\src\pogcvm\test\pogcvmUnitTests.cpp">
+      <Filter>pogcvm\tests</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\util\test\BalanceTests.cpp">
       <Filter>util\tests</Filter>
@@ -1295,11 +1295,11 @@
     <ClInclude Include="..\..\lib\json\json-forwards.h">
       <Filter>lib\json</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\scp\SCP.h">
-      <Filter>scp</Filter>
+    <ClInclude Include="..\..\src\pogcvm\pogcvm.h">
+      <Filter>pogcvm</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\scp\Slot.h">
-      <Filter>scp</Filter>
+    <ClInclude Include="..\..\src\pogcvm\Slot.h">
+      <Filter>pogcvm</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\util\Fs.h">
       <Filter>util</Filter>
@@ -1316,20 +1316,20 @@
     <ClInclude Include="..\..\src\util\HashOfHash.h">
       <Filter>util</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\scp\BallotProtocol.h">
-      <Filter>scp</Filter>
+    <ClInclude Include="..\..\src\pogcvm\BallotProtocol.h">
+      <Filter>pogcvm</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\scp\NominationProtocol.h">
-      <Filter>scp</Filter>
+    <ClInclude Include="..\..\src\pogcvm\NominationProtocol.h">
+      <Filter>pogcvm</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\simulation\LoadGenerator.h">
       <Filter>simulation</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\scp\LocalNode.h">
-      <Filter>scp</Filter>
+    <ClInclude Include="..\..\src\pogcvm\LocalNode.h">
+      <Filter>pogcvm</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\scp\SCPDriver.h">
-      <Filter>scp</Filter>
+    <ClInclude Include="..\..\src\pogcvm\pogcvmDriver.h">
+      <Filter>pogcvm</Filter>
     </ClInclude>
     <ClInclude Include="..\..\lib\util\crc16.h">
       <Filter>util</Filter>
@@ -1346,7 +1346,7 @@
     <ClInclude Include="src\generated\xdr\POGchain-overlay.h">
       <Filter>xdr\generated</Filter>
     </ClInclude>
-    <ClInclude Include="src\generated\xdr\POGchain-SCP.h">
+    <ClInclude Include="src\generated\xdr\POGchain-pogcvm.h">
       <Filter>xdr\generated</Filter>
     </ClInclude>
     <ClInclude Include="src\generated\xdr\POGchain-transaction.h">
@@ -1379,8 +1379,8 @@
     <ClInclude Include="..\..\src\util\StatusManager.h">
       <Filter>util</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\scp\QuorumSetUtils.h">
-      <Filter>scp</Filter>
+    <ClInclude Include="..\..\src\pogcvm\QuorumSetUtils.h">
+      <Filter>pogcvm</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\test\test.h">
       <Filter>test</Filter>
@@ -1616,7 +1616,7 @@
     <ClInclude Include="..\..\src\herder\HerderPersistenceImpl.h">
       <Filter>herder</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\herder\HerderSCPDriver.h">
+    <ClInclude Include="..\..\src\herder\HerderpogcvmDriver.h">
       <Filter>herder</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\herder\HerderUtils.h">
@@ -2127,8 +2127,8 @@
     <None Include="..\..\README.md" />
     <None Include="..\..\autogen.sh" />
     <None Include="..\..\Makefile.am" />
-    <None Include="..\..\src\scp\readme.md">
-      <Filter>scp</Filter>
+    <None Include="..\..\src\pogcvm\readme.md">
+      <Filter>pogcvm</Filter>
     </None>
     <None Include="..\..\src\herder\readme.md">
       <Filter>herder\docs</Filter>
@@ -2269,7 +2269,7 @@
     <CustomBuild Include="..\..\src\xdr\POGchain-ledger-entries.x">
       <Filter>xdr</Filter>
     </CustomBuild>
-    <CustomBuild Include="..\..\src\xdr\POGchain-SCP.x">
+    <CustomBuild Include="..\..\src\xdr\POGchain-pogcvm.x">
       <Filter>xdr</Filter>
     </CustomBuild>
     <CustomBuild Include="..\..\src\main\POGchainVersion.cpp.in">

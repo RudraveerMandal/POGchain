@@ -35,9 +35,9 @@ TEST_CASE("genesisledger", "[ledger]")
     auto const& header = lcl.header;
     REQUIRE(header.ledgerVersion == 0);
     REQUIRE(header.previousLedgerHash == Hash{});
-    REQUIRE(header.scpValue.txSetHash == Hash{});
-    REQUIRE(header.scpValue.closeTime == 0);
-    REQUIRE(header.scpValue.upgrades.size() == 0);
+    REQUIRE(header.pogcvmValue.txSetHash == Hash{});
+    REQUIRE(header.pogcvmValue.closeTime == 0);
+    REQUIRE(header.pogcvmValue.upgrades.size() == 0);
     REQUIRE(header.txSetResultHash == Hash{});
     REQUIRE(binToHex(header.bucketListHash) ==
             "4e6a8404d33b17eee7031af0b3606b6af8e36fe5a3bff59e4e5e420bd0ad3bf4");
@@ -85,7 +85,7 @@ TEST_CASE("ledgerheader", "[ledger]")
     SECTION("load existing ledger")
     {
         Config cfg2(cfg);
-        cfg2.FORCE_SCP = false;
+        cfg2.FORCE_pogcvm = false;
         VirtualClock clock2;
         Application::pointer app2 = Application::create(clock2, cfg2, false);
         app2->start();

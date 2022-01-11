@@ -35,7 +35,7 @@ class Simulation
 
     using pointer = std::shared_ptr<Simulation>;
     using ConfigGen = std::function<Config(int i)>;
-    using QuorumSetAdjuster = std::function<SCPQuorumSet(SCPQuorumSet const&)>;
+    using QuorumSetAdjuster = std::function<pogcvmQuorumSet(pogcvmQuorumSet const&)>;
 
     Simulation(Mode mode, Hash const& networkID, ConfigGen = nullptr,
                QuorumSetAdjuster = nullptr);
@@ -45,7 +45,7 @@ class Simulation
     void setCurrentVirtualTime(VirtualClock::time_point t);
     void setCurrentVirtualTime(VirtualClock::system_time_point t);
 
-    Application::pointer addNode(SecretKey nodeKey, SCPQuorumSet qSet,
+    Application::pointer addNode(SecretKey nodeKey, pogcvmQuorumSet qSet,
                                  Config const* cfg = nullptr,
                                  bool newDB = true);
     Application::pointer getNode(NodeID nodeID);

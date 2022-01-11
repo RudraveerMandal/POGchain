@@ -48,7 +48,7 @@ class Tracker
     // or not at the time
     std::map<Peer::pointer, bool> mPeersAsked;
     VirtualTimer mTimer;
-    std::vector<std::pair<Hash, SCPEnvelope>> mWaitingEnvelopes;
+    std::vector<std::pair<Hash, pogcvmEnvelope>> mWaitingEnvelopes;
     Hash mItemHash;
     medida::Meter& mTryNextPeer;
     uint64 mLastSeenSlotIndex{0};
@@ -74,7 +74,7 @@ class Tracker
     /**
      * Return list of envelopes this tracker is waiting for.
      */
-    const std::vector<std::pair<Hash, SCPEnvelope>>&
+    const std::vector<std::pair<Hash, pogcvmEnvelope>>&
     waitingEnvelopes() const
     {
         return mWaitingEnvelopes;
@@ -92,7 +92,7 @@ class Tracker
     /**
      * Pop envelope from stack.
      */
-    SCPEnvelope pop();
+    pogcvmEnvelope pop();
 
     /**
      * Get duration since fetch start
@@ -111,12 +111,12 @@ class Tracker
      * Add @p env to list of envelopes that will be resend to Herder when data
      * is received.
      */
-    void listen(const SCPEnvelope& env);
+    void listen(const pogcvmEnvelope& env);
 
     /**
      * Stops tracking envelope @p env.
      */
-    void discard(const SCPEnvelope& env);
+    void discard(const pogcvmEnvelope& env);
 
     /**
      * Stop the timer, stop requesting the item as we have it.

@@ -1022,13 +1022,13 @@ OverlayManagerImpl::recordMessageMetric(POGchainMessage const& POGchainMsg,
     };
 
     bool flood = false;
-    if (POGchainMsg.type() == TRANSACTION || POGchainMsg.type() == SCP_MESSAGE ||
+    if (POGchainMsg.type() == TRANSACTION || POGchainMsg.type() == pogcvm_MESSAGE ||
         POGchainMsg.type() == SURVEY_REQUEST ||
         POGchainMsg.type() == SURVEY_RESPONSE)
     {
         flood = true;
     }
-    else if (POGchainMsg.type() != TX_SET && POGchainMsg.type() != SCP_QUORUMSET)
+    else if (POGchainMsg.type() != TX_SET && POGchainMsg.type() != pogcvm_QUORUMSET)
     {
         return;
     }

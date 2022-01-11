@@ -1438,7 +1438,7 @@ TEST_CASE("remove applied", "[herder][transactionqueue]")
         POGchainValue sv = herder.makePOGchainValue(txSet->getContentsHash(), 2,
                                                   emptyUpgradeSteps,
                                                   app->getConfig().NODE_SEED);
-        herder.getHerderSCPDriver().valueExternalized(ledgerSeq,
+        herder.getHerderpogcvmDriver().valueExternalized(ledgerSeq,
                                                       xdr::xdr_to_opaque(sv));
     }
 

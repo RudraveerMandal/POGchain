@@ -91,7 +91,7 @@ CommandHandler::CommandHandler(Application& app) : mApp(app)
         addRoute("droppeer", &CommandHandler::dropPeer);
         addRoute("peers", &CommandHandler::peers);
         addRoute("quorum", &CommandHandler::quorum);
-        addRoute("scp", &CommandHandler::scpInfo);
+        addRoute("pogcvm", &CommandHandler::pogcvmInfo);
         addRoute("stopsurvey", &CommandHandler::stopSurvey);
 #ifndef BUILD_TESTS
         addRoute("getsurveyresult", &CommandHandler::getSurveyResult);
@@ -603,7 +603,7 @@ CommandHandler::quorum(std::string const& params, std::string& retStr)
 }
 
 void
-CommandHandler::scpInfo(std::string const& params, std::string& retStr)
+CommandHandler::pogcvmInfo(std::string const& params, std::string& retStr)
 {
     ZoneScoped;
     std::map<std::string, std::string> retMap;

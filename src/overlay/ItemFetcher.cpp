@@ -25,7 +25,7 @@ ItemFetcher::ItemFetcher(Application& app, AskPeer askPeer)
 }
 
 void
-ItemFetcher::fetch(Hash const& itemHash, const SCPEnvelope& envelope)
+ItemFetcher::fetch(Hash const& itemHash, const pogcvmEnvelope& envelope)
 {
     ZoneScoped;
     CLOG_TRACE(Overlay, "fetch {}", hexAbbrev(itemHash));
@@ -46,7 +46,7 @@ ItemFetcher::fetch(Hash const& itemHash, const SCPEnvelope& envelope)
 }
 
 void
-ItemFetcher::stopFetch(Hash const& itemHash, SCPEnvelope const& envelope)
+ItemFetcher::stopFetch(Hash const& itemHash, pogcvmEnvelope const& envelope)
 {
     ZoneScoped;
     const auto& iter = mTrackers.find(itemHash);
@@ -82,10 +82,10 @@ ItemFetcher::getLastSeenSlotIndex(Hash const& itemHash) const
     return iter->second->getLastSeenSlotIndex();
 }
 
-std::vector<SCPEnvelope>
+std::vector<pogcvmEnvelope>
 ItemFetcher::fetchingFor(Hash const& itemHash) const
 {
-    auto result = std::vector<SCPEnvelope>{};
+    auto result = std::vector<pogcvmEnvelope>{};
     auto iter = mTrackers.find(itemHash);
     if (iter == mTrackers.end())
     {
@@ -95,7 +95,7 @@ ItemFetcher::fetchingFor(Hash const& itemHash) const
     auto const& waiting = iter->second->waitingEnvelopes();
     std::transform(
         std::begin(waiting), std::end(waiting), std::back_inserter(result),
-        [](std::pair<Hash, SCPEnvelope> const& x) { return x.second; });
+        [](std::pair<Hash, pogcvmEnvelope> const& x) { return x.second; });
     return result;
 }
 
@@ -145,7 +145,7 @@ ItemFetcher::recv(Hash itemHash, medida::Timer& timer)
 
     if (iter != mTrackers.end())
     {
-        // this code can safely be called even if recvSCPEnvelope ends up
+        // this code can safely be called even if recvpogcvmEnvelope ends up
         // calling recv on the same itemHash
         auto& tracker = iter->second;
 
@@ -155,7 +155,7 @@ ItemFetcher::recv(Hash itemHash, medida::Timer& timer)
         timer.Update(tracker->getDuration());
         while (!tracker->empty())
         {
-            mApp.getHerder().recvSCPEnvelope(tracker->pop());
+            mApp.getHerder().recvpogcvmEnvelope(tracker->pop());
         }
         // stop the timer, stop requesting the item as we have it
         tracker->resetLastSeenSlotIndex();

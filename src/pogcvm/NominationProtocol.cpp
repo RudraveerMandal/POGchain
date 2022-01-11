@@ -7,8 +7,8 @@
 #include "Slot.h"
 #include "crypto/Hex.h"
 #include "lib/json/json.h"
-#include "scp/LocalNode.h"
-#include "scp/QuorumSetUtils.h"
+#include "pogcvm/LocalNode.h"
+#include "pogcvm/QuorumSetUtils.h"
 #include "util/GlobalChecks.h"
 #include "util/Logging.h"
 #include "util/XDROperators.h"
@@ -28,7 +28,7 @@ NominationProtocol::NominationProtocol(Slot& slot)
 
 bool
 NominationProtocol::isNewerStatement(NodeID const& nodeID,
-                                     SCPNomination const& st)
+                                     pogcvmNomination const& st)
 {
     auto oldp = mLatestNominations.find(nodeID);
     bool res = false;
@@ -70,23 +70,23 @@ NominationProtocol::isSubsetHelper(xdr::xvector<Value> const& p,
     return res;
 }
 
-SCPDriver::ValidationLevel
+pogcvmDriver::ValidationLevel
 NominationProtocol::validateValue(Value const& v)
 {
     ZoneScoped;
-    return mSlot.getSCPDriver().validateValue(mSlot.getSlotIndex(), v, true);
+    return mSlot.getpogcvmDriver().validateValue(mSlot.getSlotIndex(), v, true);
 }
 
 ValueWrapperPtr
 NominationProtocol::extractValidValue(Value const& value)
 {
     ZoneScoped;
-    return mSlot.getSCPDriver().extractValidValue(mSlot.getSlotIndex(), value);
+    return mSlot.getpogcvmDriver().extractValidValue(mSlot.getSlotIndex(), value);
 }
 
 bool
-NominationProtocol::isNewerStatement(SCPNomination const& oldst,
-                                     SCPNomination const& st)
+NominationProtocol::isNewerStatement(pogcvmNomination const& oldst,
+                                     pogcvmNomination const& st)
 {
     bool res = false;
     bool grows;
@@ -106,7 +106,7 @@ NominationProtocol::isNewerStatement(SCPNomination const& oldst,
 }
 
 bool
-NominationProtocol::isSane(SCPStatement const& st)
+NominationProtocol::isSane(pogcvmStatement const& st)
 {
     auto const& nom = st.pledges.nominate();
     bool res = (nom.votes.size() + nom.accepted.size()) != 0;
@@ -128,7 +128,7 @@ NominationProtocol::isSane(SCPStatement const& st)
 // only called after a call to isNewerStatement so safe to replace the
 // mLatestNomination
 void
-NominationProtocol::recordEnvelope(SCPEnvelopeWrapperPtr env)
+NominationProtocol::recordEnvelope(pogcvmEnvelopeWrapperPtr env)
 {
     auto const& st = env->getStatement();
     auto oldp = mLatestNominations.find(st.nodeID);
@@ -147,9 +147,9 @@ void
 NominationProtocol::emitNomination()
 {
     ZoneScoped;
-    SCPStatement st;
+    pogcvmStatement st;
     st.nodeID = mSlot.getLocalNode()->getNodeID();
-    st.pledges.type(SCP_ST_NOMINATE);
+    st.pledges.type(pogcvm_ST_NOMINATE);
     auto& nom = st.pledges.nominate();
 
     nom.quorumSetHash = mSlot.getLocalNode()->getQuorumSetHash();
@@ -163,11 +163,11 @@ NominationProtocol::emitNomination()
         nom.accepted.emplace_back(a->getValue());
     }
 
-    SCPEnvelope envelope = mSlot.createEnvelope(st);
+    pogcvmEnvelope envelope = mSlot.createEnvelope(st);
 
-    auto envW = mSlot.getSCPDriver().wrapEnvelope(envelope);
+    auto envW = mSlot.getpogcvmDriver().wrapEnvelope(envelope);
 
-    if (mSlot.processEnvelope(envW, true) == SCP::EnvelopeState::VALID)
+    if (mSlot.processEnvelope(envW, true) == pogcvm::EnvelopeState::VALID)
     {
         if (!mLastEnvelope ||
             isNewerStatement(mLastEnvelope->getStatement().pledges.nominate(),
@@ -176,7 +176,7 @@ NominationProtocol::emitNomination()
             mLastEnvelope = envW;
             if (mSlot.isFullyValidated())
             {
-                mSlot.getSCPDriver().emitEnvelope(envelope);
+                mSlot.getpogcvmDriver().emitEnvelope(envelope);
             }
         }
     }
@@ -189,7 +189,7 @@ NominationProtocol::emitNomination()
 }
 
 bool
-NominationProtocol::acceptPredicate(Value const& v, SCPStatement const& st)
+NominationProtocol::acceptPredicate(Value const& v, pogcvmStatement const& st)
 {
     auto const& nom = st.pledges.nominate();
     bool res;
@@ -199,7 +199,7 @@ NominationProtocol::acceptPredicate(Value const& v, SCPStatement const& st)
 }
 
 void
-NominationProtocol::applyAll(SCPNomination const& nom,
+NominationProtocol::applyAll(pogcvmNomination const& nom,
                              std::function<void(Value const&)> processor)
 {
     for (auto const& v : nom.votes)
@@ -220,7 +220,7 @@ void
 NominationProtocol::updateRoundLeaders()
 {
     ZoneScoped;
-    SCPQuorumSet myQSet = mSlot.getLocalNode()->getQuorumSet();
+    pogcvmQuorumSet myQSet = mSlot.getLocalNode()->getQuorumSet();
 
     auto localID = mSlot.getLocalNode()->getNodeID();
     normalizeQSet(myQSet, &localID); // excludes self
@@ -259,14 +259,14 @@ NominationProtocol::updateRoundLeaders()
         mRoundLeaders.insert(newRoundLeaders.begin(), newRoundLeaders.end());
         if (oldSize != mRoundLeaders.size())
         {
-            if (Logging::logDebug("SCP"))
+            if (Logging::logDebug("pogcvm"))
             {
-                CLOG_DEBUG(SCP, "updateRoundLeaders: {} -> {}", oldSize,
+                CLOG_DEBUG(pogcvm, "updateRoundLeaders: {} -> {}", oldSize,
                            mRoundLeaders.size());
                 for (auto const& rl : mRoundLeaders)
                 {
-                    CLOG_DEBUG(SCP, "    leader {}",
-                               mSlot.getSCPDriver().toShortString(rl));
+                    CLOG_DEBUG(pogcvm, "    leader {}",
+                               mSlot.getpogcvmDriver().toShortString(rl));
                 }
             }
             return;
@@ -274,12 +274,12 @@ NominationProtocol::updateRoundLeaders()
         else
         {
             mRoundNumber++;
-            CLOG_DEBUG(SCP,
+            CLOG_DEBUG(pogcvm,
                        "updateRoundLeaders: fast timeout (would no op) -> {}",
                        mRoundNumber);
         }
     }
-    CLOG_DEBUG(SCP, "updateRoundLeaders: nothing to do");
+    CLOG_DEBUG(pogcvm, "updateRoundLeaders: nothing to do");
 }
 
 uint64
@@ -287,7 +287,7 @@ NominationProtocol::hashNode(bool isPriority, NodeID const& nodeID)
 {
     ZoneScoped;
     dbgAssert(!mPreviousValue.empty());
-    return mSlot.getSCPDriver().computeHashNode(
+    return mSlot.getpogcvmDriver().computeHashNode(
         mSlot.getSlotIndex(), mPreviousValue, isPriority, mRoundNumber, nodeID);
 }
 
@@ -296,13 +296,13 @@ NominationProtocol::hashValue(Value const& value)
 {
     ZoneScoped;
     dbgAssert(!mPreviousValue.empty());
-    return mSlot.getSCPDriver().computeValueHash(
+    return mSlot.getpogcvmDriver().computeValueHash(
         mSlot.getSlotIndex(), mPreviousValue, mRoundNumber, value);
 }
 
 uint64
 NominationProtocol::getNodePriority(NodeID const& nodeID,
-                                    SCPQuorumSet const& qset)
+                                    pogcvmQuorumSet const& qset)
 {
     ZoneScoped;
     uint64 res;
@@ -332,7 +332,7 @@ NominationProtocol::getNodePriority(NodeID const& nodeID,
 }
 
 ValueWrapperPtr
-NominationProtocol::getNewValueFromNomination(SCPNomination const& nom)
+NominationProtocol::getNewValueFromNomination(pogcvmNomination const& nom)
 {
     ZoneScoped;
     // pick the highest value we don't have from the leader
@@ -343,9 +343,9 @@ NominationProtocol::getNewValueFromNomination(SCPNomination const& nom)
     applyAll(nom, [&](Value const& value) {
         ValueWrapperPtr valueToNominate;
         auto vl = validateValue(value);
-        if (vl == SCPDriver::kFullyValidatedValue)
+        if (vl == pogcvmDriver::kFullyValidatedValue)
         {
-            valueToNominate = mSlot.getSCPDriver().wrapValue(value);
+            valueToNominate = mSlot.getpogcvmDriver().wrapValue(value);
         }
         else
         {
@@ -367,20 +367,20 @@ NominationProtocol::getNewValueFromNomination(SCPNomination const& nom)
     return newVote;
 }
 
-SCP::EnvelopeState
-NominationProtocol::processEnvelope(SCPEnvelopeWrapperPtr envelope)
+pogcvm::EnvelopeState
+NominationProtocol::processEnvelope(pogcvmEnvelopeWrapperPtr envelope)
 {
     ZoneScoped;
     auto const& st = envelope->getStatement();
     auto const& nom = st.pledges.nominate();
 
     if (!isNewerStatement(st.nodeID, nom))
-        return SCP::EnvelopeState::INVALID;
+        return pogcvm::EnvelopeState::INVALID;
 
     if (!isSane(st))
     {
-        CLOG_TRACE(SCP, "NominationProtocol: message didn't pass sanity check");
-        return SCP::EnvelopeState::INVALID;
+        CLOG_TRACE(pogcvm, "NominationProtocol: message didn't pass sanity check");
+        return pogcvm::EnvelopeState::INVALID;
     }
 
     recordEnvelope(envelope);
@@ -394,13 +394,13 @@ NominationProtocol::processEnvelope(SCPEnvelopeWrapperPtr envelope)
         // attempts to promote some of the votes to accepted
         for (auto const& v : nom.votes)
         {
-            auto vw = mSlot.getSCPDriver().wrapValue(v);
+            auto vw = mSlot.getpogcvmDriver().wrapValue(v);
             if (mAccepted.find(vw) != mAccepted.end())
             { // v is already accepted
                 continue;
             }
             if (mSlot.federatedAccept(
-                    [&v](SCPStatement const& st) -> bool {
+                    [&v](pogcvmStatement const& st) -> bool {
                         auto const& nom = st.pledges.nominate();
                         bool res;
                         res = (std::find(nom.votes.begin(), nom.votes.end(),
@@ -411,7 +411,7 @@ NominationProtocol::processEnvelope(SCPEnvelopeWrapperPtr envelope)
                     mLatestNominations))
             {
                 auto vl = validateValue(v);
-                if (vl == SCPDriver::kFullyValidatedValue)
+                if (vl == pogcvmDriver::kFullyValidatedValue)
                 {
                     mAccepted.emplace(vw);
                     mVotes.emplace(vw);
@@ -460,7 +460,7 @@ NominationProtocol::processEnvelope(SCPEnvelopeWrapperPtr envelope)
             {
                 mVotes.emplace(newVote);
                 modified = true;
-                mSlot.getSCPDriver().nominatingValue(mSlot.getSlotIndex(),
+                mSlot.getpogcvmDriver().nominatingValue(mSlot.getSlotIndex(),
                                                      newVote->getValue());
             }
         }
@@ -472,20 +472,20 @@ NominationProtocol::processEnvelope(SCPEnvelopeWrapperPtr envelope)
 
         if (newCandidates)
         {
-            mLatestCompositeCandidate = mSlot.getSCPDriver().combineCandidates(
+            mLatestCompositeCandidate = mSlot.getpogcvmDriver().combineCandidates(
                 mSlot.getSlotIndex(), mCandidates);
 
-            mSlot.getSCPDriver().updatedCandidateValue(
+            mSlot.getpogcvmDriver().updatedCandidateValue(
                 mSlot.getSlotIndex(), mLatestCompositeCandidate->getValue());
 
             mSlot.bumpState(mLatestCompositeCandidate->getValue(), false);
         }
     }
-    return SCP::EnvelopeState::VALID;
+    return pogcvm::EnvelopeState::VALID;
 }
 
 std::vector<Value>
-NominationProtocol::getStatementValues(SCPStatement const& st)
+NominationProtocol::getStatementValues(pogcvmStatement const& st)
 {
     std::vector<Value> res;
     applyAll(st.pledges.nominate(),
@@ -493,20 +493,20 @@ NominationProtocol::getStatementValues(SCPStatement const& st)
     return res;
 }
 
-// attempts to nominate a value for consensus
+// attempts to nominate a value for validation
 bool
 NominationProtocol::nominate(ValueWrapperPtr value, Value const& previousValue,
                              bool timedout)
 {
     ZoneScoped;
-    CLOG_DEBUG(SCP, "NominationProtocol::nominate ({}) {}", mRoundNumber,
-               mSlot.getSCP().getValueString(value->getValue()));
+    CLOG_DEBUG(pogcvm, "NominationProtocol::nominate ({}) {}", mRoundNumber,
+               mSlot.getpogcvm().getValueString(value->getValue()));
 
     bool updated = false;
 
     if (timedout && !mNominationStarted)
     {
-        CLOG_DEBUG(SCP, "NominationProtocol::nominate (TIMED OUT)");
+        CLOG_DEBUG(pogcvm, "NominationProtocol::nominate (TIMED OUT)");
         return false;
     }
 
@@ -518,7 +518,7 @@ NominationProtocol::nominate(ValueWrapperPtr value, Value const& previousValue,
     updateRoundLeaders();
 
     std::chrono::milliseconds timeout =
-        mSlot.getSCPDriver().computeTimeout(mRoundNumber);
+        mSlot.getpogcvmDriver().computeTimeout(mRoundNumber);
 
     // if we're leader, add our value
     if (mRoundLeaders.find(mSlot.getLocalNode()->getNodeID()) !=
@@ -528,7 +528,7 @@ NominationProtocol::nominate(ValueWrapperPtr value, Value const& previousValue,
         if (ins.second)
         {
             updated = true;
-            mSlot.getSCPDriver().nominatingValue(mSlot.getSlotIndex(),
+            mSlot.getpogcvmDriver().nominatingValue(mSlot.getSlotIndex(),
                                                  value->getValue());
         }
     }
@@ -544,14 +544,14 @@ NominationProtocol::nominate(ValueWrapperPtr value, Value const& previousValue,
             {
                 mVotes.insert(lnmV);
                 updated = true;
-                mSlot.getSCPDriver().nominatingValue(mSlot.getSlotIndex(),
+                mSlot.getpogcvmDriver().nominatingValue(mSlot.getSlotIndex(),
                                                      lnmV->getValue());
             }
         }
     }
 
     std::shared_ptr<Slot> slot = mSlot.shared_from_this();
-    mSlot.getSCPDriver().setupTimer(
+    mSlot.getpogcvmDriver().setupTimer(
         mSlot.getSlotIndex(), Slot::NOMINATION_TIMER, timeout,
         [slot, value, previousValue]() {
             slot->nominate(value, previousValue, true);
@@ -563,7 +563,7 @@ NominationProtocol::nominate(ValueWrapperPtr value, Value const& previousValue,
     }
     else
     {
-        CLOG_DEBUG(SCP, "NominationProtocol::nominate (SKIPPED)");
+        CLOG_DEBUG(pogcvm, "NominationProtocol::nominate (SKIPPED)");
     }
 
     return updated;
@@ -591,21 +591,21 @@ NominationProtocol::getJsonInfo()
     int counter = 0;
     for (auto const& v : mVotes)
     {
-        ret["X"][counter] = mSlot.getSCP().getValueString(v->getValue());
+        ret["X"][counter] = mSlot.getpogcvm().getValueString(v->getValue());
         counter++;
     }
 
     counter = 0;
     for (auto const& v : mAccepted)
     {
-        ret["Y"][counter] = mSlot.getSCP().getValueString(v->getValue());
+        ret["Y"][counter] = mSlot.getpogcvm().getValueString(v->getValue());
         counter++;
     }
 
     counter = 0;
     for (auto const& v : mCandidates)
     {
-        ret["Z"][counter] = mSlot.getSCP().getValueString(v->getValue());
+        ret["Z"][counter] = mSlot.getpogcvm().getValueString(v->getValue());
         counter++;
     }
 
@@ -613,7 +613,7 @@ NominationProtocol::getJsonInfo()
 }
 
 void
-NominationProtocol::setStateFromEnvelope(SCPEnvelopeWrapperPtr e)
+NominationProtocol::setStateFromEnvelope(pogcvmEnvelopeWrapperPtr e)
 {
     if (mNominationStarted)
     {
@@ -624,11 +624,11 @@ NominationProtocol::setStateFromEnvelope(SCPEnvelopeWrapperPtr e)
     auto const& nom = e->getStatement().pledges.nominate();
     for (auto const& a : nom.accepted)
     {
-        mAccepted.emplace(mSlot.getSCPDriver().wrapValue(a));
+        mAccepted.emplace(mSlot.getpogcvmDriver().wrapValue(a));
     }
     for (auto const& v : nom.votes)
     {
-        mVotes.emplace(mSlot.getSCPDriver().wrapValue(v));
+        mVotes.emplace(mSlot.getpogcvmDriver().wrapValue(v));
     }
 
     mLastEnvelope = e;
@@ -636,12 +636,12 @@ NominationProtocol::setStateFromEnvelope(SCPEnvelopeWrapperPtr e)
 
 bool
 NominationProtocol::processCurrentState(
-    std::function<bool(SCPEnvelope const&)> const& f, bool forceSelf) const
+    std::function<bool(pogcvmEnvelope const&)> const& f, bool forceSelf) const
 {
     for (auto const& n : mLatestNominations)
     {
         // only return messages for self if the slot is fully validated
-        if (forceSelf || !(n.first == mSlot.getSCP().getLocalNodeID()) ||
+        if (forceSelf || !(n.first == mSlot.getpogcvm().getLocalNodeID()) ||
             mSlot.isFullyValidated())
         {
             if (!f(n.second->getEnvelope()))
@@ -653,7 +653,7 @@ NominationProtocol::processCurrentState(
     return true;
 }
 
-SCPEnvelope const*
+pogcvmEnvelope const*
 NominationProtocol::getLatestMessage(NodeID const& id) const
 {
     auto it = mLatestNominations.find(id);

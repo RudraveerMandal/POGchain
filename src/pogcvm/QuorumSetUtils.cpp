@@ -5,7 +5,7 @@
 #include "QuorumSetUtils.h"
 
 #include "util/XDROperators.h"
-#include "xdr/POGchain-SCP.h"
+#include "xdr/POGchain-pogcvm.h"
 #include "xdr/POGchain-types.h"
 
 #include <algorithm>
@@ -21,7 +21,7 @@ namespace
 class QuorumSetSanityChecker
 {
   public:
-    explicit QuorumSetSanityChecker(SCPQuorumSet const& qSet, bool extraChecks,
+    explicit QuorumSetSanityChecker(pogcvmQuorumSet const& qSet, bool extraChecks,
                                     char const*& errString);
     bool
     isSane() const
@@ -35,11 +35,11 @@ class QuorumSetSanityChecker
     bool mIsSane;
     size_t mCount{0};
 
-    bool checkSanity(SCPQuorumSet const& qSet, uint32 depth,
+    bool checkSanity(pogcvmQuorumSet const& qSet, uint32 depth,
                      char const*& errString);
 };
 
-QuorumSetSanityChecker::QuorumSetSanityChecker(SCPQuorumSet const& qSet,
+QuorumSetSanityChecker::QuorumSetSanityChecker(pogcvmQuorumSet const& qSet,
                                                bool extraChecks,
                                                char const*& errString)
     : mExtraChecks{extraChecks}
@@ -54,7 +54,7 @@ QuorumSetSanityChecker::QuorumSetSanityChecker(SCPQuorumSet const& qSet,
 }
 
 bool
-QuorumSetSanityChecker::checkSanity(SCPQuorumSet const& qSet, uint32 depth,
+QuorumSetSanityChecker::checkSanity(pogcvmQuorumSet const& qSet, uint32 depth,
                                     char const*& errString)
 {
     if (depth > MAXIMUM_QUORUM_NESTING_LEVEL)
@@ -113,7 +113,7 @@ QuorumSetSanityChecker::checkSanity(SCPQuorumSet const& qSet, uint32 depth,
 }
 
 bool
-isQuorumSetSane(SCPQuorumSet const& qSet, bool extraChecks,
+isQuorumSetSane(pogcvmQuorumSet const& qSet, bool extraChecks,
                 char const*& errString)
 {
     QuorumSetSanityChecker checker{qSet, extraChecks, errString};
@@ -134,7 +134,7 @@ namespace
 //      { t:1, { innerSet } } into innerSet
 
 void
-normalizeQSetSimplify(SCPQuorumSet& qSet, NodeID const* idToRemove)
+normalizeQSetSimplify(pogcvmQuorumSet& qSet, NodeID const* idToRemove)
 {
     using xdr::operator==;
     auto& v = qSet.validators;
@@ -201,7 +201,7 @@ intLexicographicalCompare(InputIt1 first1, InputIt1 last1, InputIt2 first2,
 // lexicographical sort
 // looking at, in order: validators, innerSets, threshold
 int
-qSetCompareInt(SCPQuorumSet const& l, SCPQuorumSet const& r)
+qSetCompareInt(pogcvmQuorumSet const& l, pogcvmQuorumSet const& r)
 {
     auto& lvals = l.validators;
     auto& rvals = r.validators;
@@ -243,7 +243,7 @@ qSetCompareInt(SCPQuorumSet const& l, SCPQuorumSet const& r)
 // helper function that reorders validators and inner sets
 // in a standard way
 void
-normalizeQuorumSetReorder(SCPQuorumSet& qset)
+normalizeQuorumSetReorder(pogcvmQuorumSet& qset)
 {
     std::sort(qset.validators.begin(), qset.validators.end());
     for (auto& qs : qset.innerSets)
@@ -252,13 +252,13 @@ normalizeQuorumSetReorder(SCPQuorumSet& qset)
     }
     // now, we can reorder the inner sets
     std::sort(qset.innerSets.begin(), qset.innerSets.end(),
-              [](SCPQuorumSet const& l, SCPQuorumSet const& r) {
+              [](pogcvmQuorumSet const& l, pogcvmQuorumSet const& r) {
                   return qSetCompareInt(l, r) < 0;
               });
 }
 }
 void
-normalizeQSet(SCPQuorumSet& qSet, NodeID const* idToRemove)
+normalizeQSet(pogcvmQuorumSet& qSet, NodeID const* idToRemove)
 {
     normalizeQSetSimplify(qSet, idToRemove);
     normalizeQuorumSetReorder(qSet);

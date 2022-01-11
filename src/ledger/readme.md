@@ -2,7 +2,7 @@
 A ledger represents the state of the POGchain universe at a given point in time.
 The first ledger in history is called the genesis ledger.
 
-Every SCP round, consensus decides on which transaction set to apply to the
+Every pogcvm round, validation decides on which transaction set to apply to the
 last closed ledger; when the new set is applied, a new "last closed ledger"
 is defined.
 
@@ -39,9 +39,9 @@ POGcoins present at a given time.
 The way a ledger header refers to a previous ledger is actually done with
 alternate validation in mind.
 
-### Fields decided by consensus (SCP)
-During consensus, nodes work together to decide on the value of POGchainValue.
-POGchainValue is then saved in the scpValue field of the ledger header.
+### Fields decided by validation (pogcvm)
+During validation, nodes work together to decide on the value of POGchainValue.
+POGchainValue is then saved in the pogcvmValue field of the ledger header.
 Any node on the network, given the previous ledger (their previous state) and
 'POGchainValue' should be able to transition to the same new ledger.
 
@@ -65,7 +65,7 @@ For more information look at [`docs/versioning.md`](../../docs/versioning.md)
 #### Hash of the previous ledger header
 It is there to link the sequence of ledgers as previously described.
 This is a shortcut as this is already encoded by the transaction set field in
-scpValue.
+pogcvmValue.
 
 #### Transaction Set Result
 Stored in txSetResultHash, it's the hash of a list of TransactionResultPair which
@@ -116,8 +116,8 @@ AccountEntry container.
 
 ## LedgerManager
 This is the ledger module used to manage the current ledger:
-* during normal operation, SCP calls the main "externalizeValue" method
-    when consensus has been reached.
+* during normal operation, pogcvm calls the main "externalizeValue" method
+    when validation has been reached.
 * when out of sync, the history module calls catch up related methods.
 
 LedgerManager gives other modules ways to query ledger information, like
@@ -140,12 +140,12 @@ For more detail see the "Closing a ledger" section.
 
 # Closing a ledger
 
-When closing a ledger, the engine needs to apply the consensus transaction set
+When closing a ledger, the engine needs to apply the validation transaction set
 to the last closed ledger to produce a new closed ledger.
 The method that does this is `LedgerManagerImpl::closeLedger`.
 
 1. First the transaction set is reordered in apply order:
-during consensus, the transaction set was sorted by hash to keep things simple,
+during validation, the transaction set was sorted by hash to keep things simple,
 but when it comes to actually applying them, they need to be sorted such that
 transactions for a given account are applied in sequence number order and also
 randomized enough so that it becomes unfeasible to submit a transaction and

@@ -165,7 +165,7 @@ std::vector<LedgerUpgrade>
 Upgrades::createUpgradesFor(LedgerHeader const& header) const
 {
     auto result = std::vector<LedgerUpgrade>{};
-    if (!timeForUpgrade(header.scpValue.closeTime))
+    if (!timeForUpgrade(header.pogcvmValue.closeTime))
     {
         return result;
     }
@@ -410,7 +410,7 @@ bool
 Upgrades::isValidForNomination(LedgerUpgrade const& upgrade,
                                LedgerHeader const& header) const
 {
-    if (!timeForUpgrade(header.scpValue.closeTime))
+    if (!timeForUpgrade(header.pogcvmValue.closeTime))
     {
         return false;
     }

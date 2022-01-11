@@ -268,7 +268,7 @@ TEST_CASE("manualclose", "[commandhandler]")
     REQUIRE(app->getConfig().MANUAL_CLOSE);
     REQUIRE(app->getConfig().NODE_IS_VALIDATOR);
     REQUIRE(app->getConfig().RUN_STANDALONE);
-    REQUIRE(app->getConfig().FORCE_SCP);
+    REQUIRE(app->getConfig().FORCE_pogcvm);
 
     auto const defaultManualCloseTimeInterval =
         app->getConfig().getExpectedLedgerCloseTime().count();
@@ -280,7 +280,7 @@ TEST_CASE("manualclose", "[commandhandler]")
     auto lastCloseTime = [&]() {
         return app->getLedgerManager()
             .getLastClosedLedgerHeader()
-            .header.scpValue.closeTime;
+            .header.pogcvmValue.closeTime;
     };
 
     auto submitClose = [&](std::optional<uint32_t> const& ledgerSeq,

@@ -8,8 +8,8 @@
 #include "main/Application.h"
 #include "main/Config.h"
 #include "overlay/OverlayManager.h"
-#include "scp/QuorumSetUtils.h"
-#include "scp/Slot.h"
+#include "pogcvm/QuorumSetUtils.h"
+#include "pogcvm/Slot.h"
 #include "util/GlobalChecks.h"
 #include "util/Logging.h"
 #include "util/UnorderedSet.h"
@@ -37,16 +37,16 @@ PendingEnvelopes::PendingEnvelopes(Application& app, HerderImpl& herder)
     , mRebuildQuorum(true)
     , mQuorumTracker(mApp.getConfig().NODE_SEED.getPublicKey())
     , mProcessedCount(
-          app.getMetrics().NewCounter({"scp", "pending", "processed"}))
+          app.getMetrics().NewCounter({"pogcvm", "pending", "processed"}))
     , mDiscardedCount(
-          app.getMetrics().NewCounter({"scp", "pending", "discarded"}))
+          app.getMetrics().NewCounter({"pogcvm", "pending", "discarded"}))
     , mFetchingCount(
-          app.getMetrics().NewCounter({"scp", "pending", "fetching"}))
-    , mReadyCount(app.getMetrics().NewCounter({"scp", "pending", "ready"}))
-    , mFetchDuration(app.getMetrics().NewTimer({"scp", "fetch", "envelope"}))
+          app.getMetrics().NewCounter({"pogcvm", "pending", "fetching"}))
+    , mReadyCount(app.getMetrics().NewCounter({"pogcvm", "pending", "ready"}))
+    , mFetchDuration(app.getMetrics().NewTimer({"pogcvm", "fetch", "envelope"}))
     , mFetchTxSetTimer(app.getMetrics().NewTimer({"overlay", "fetch", "txset"}))
     , mFetchQsetTimer(app.getMetrics().NewTimer({"overlay", "fetch", "qset"}))
-    , mCostPerSlot(app.getMetrics().NewHistogram({"scp", "cost", "per-slot"}))
+    , mCostPerSlot(app.getMetrics().NewHistogram({"pogcvm", "cost", "per-slot"}))
 {
 }
 
@@ -63,7 +63,7 @@ PendingEnvelopes::peerDoesntHave(MessageType type, Hash const& itemID,
     case TX_SET:
         mTxSetFetcher.doesntHave(itemID, peer);
         break;
-    case SCP_QUORUMSET:
+    case pogcvm_QUORUMSET:
         mQuorumSetFetcher.doesntHave(itemID, peer);
         break;
     default:
@@ -72,10 +72,10 @@ PendingEnvelopes::peerDoesntHave(MessageType type, Hash const& itemID,
     }
 }
 
-SCPQuorumSetPtr
+pogcvmQuorumSetPtr
 PendingEnvelopes::getKnownQSet(Hash const& hash, bool touch)
 {
-    SCPQuorumSetPtr res;
+    pogcvmQuorumSetPtr res;
     auto it = mKnownQSets.find(hash);
     if (it != mKnownQSets.end())
     {
@@ -90,17 +90,17 @@ PendingEnvelopes::getKnownQSet(Hash const& hash, bool touch)
     return res;
 }
 
-SCPQuorumSetPtr
-PendingEnvelopes::putQSet(Hash const& qSetHash, SCPQuorumSet const& qSet)
+pogcvmQuorumSetPtr
+PendingEnvelopes::putQSet(Hash const& qSetHash, pogcvmQuorumSet const& qSet)
 {
-    CLOG_TRACE(Herder, "Add SCPQSet {}", hexAbbrev(qSetHash));
-    SCPQuorumSetPtr res;
+    CLOG_TRACE(Herder, "Add pogcvmQSet {}", hexAbbrev(qSetHash));
+    pogcvmQuorumSetPtr res;
     const char* errString = nullptr;
     releaseAssert(isQuorumSetSane(qSet, false, errString));
     res = getKnownQSet(qSetHash, true);
     if (!res)
     {
-        res = std::make_shared<SCPQuorumSet>(qSet);
+        res = std::make_shared<pogcvmQuorumSet>(qSet);
         mKnownQSets[qSetHash] = res;
         mQsetCache.put(qSetHash, res);
     }
@@ -108,7 +108,7 @@ PendingEnvelopes::putQSet(Hash const& qSetHash, SCPQuorumSet const& qSet)
 }
 
 void
-PendingEnvelopes::addSCPQuorumSet(Hash const& hash, SCPQuorumSet const& q)
+PendingEnvelopes::addpogcvmQuorumSet(Hash const& hash, pogcvmQuorumSet const& q)
 {
     ZoneScoped;
     putQSet(hash, q);
@@ -116,10 +116,10 @@ PendingEnvelopes::addSCPQuorumSet(Hash const& hash, SCPQuorumSet const& q)
 }
 
 bool
-PendingEnvelopes::recvSCPQuorumSet(Hash const& hash, SCPQuorumSet const& q)
+PendingEnvelopes::recvpogcvmQuorumSet(Hash const& hash, pogcvmQuorumSet const& q)
 {
     ZoneScoped;
-    CLOG_TRACE(Herder, "Got SCPQSet {}", hexAbbrev(hash));
+    CLOG_TRACE(Herder, "Got pogcvmQSet {}", hexAbbrev(hash));
 
     auto lastSeenSlotIndex = mQuorumSetFetcher.getLastSeenSlotIndex(hash);
     if (lastSeenSlotIndex == 0)
@@ -131,25 +131,25 @@ PendingEnvelopes::recvSCPQuorumSet(Hash const& hash, SCPQuorumSet const& q)
     bool res = isQuorumSetSane(q, false, errString);
     if (res)
     {
-        addSCPQuorumSet(hash, q);
+        addpogcvmQuorumSet(hash, q);
     }
     else
     {
-        discardSCPEnvelopesWithQSet(hash);
+        discardpogcvmEnvelopesWithQSet(hash);
     }
     return res;
 }
 
 void
-PendingEnvelopes::discardSCPEnvelopesWithQSet(Hash const& hash)
+PendingEnvelopes::discardpogcvmEnvelopesWithQSet(Hash const& hash)
 {
     ZoneScoped;
-    CLOG_TRACE(Herder, "Discarding SCP Envelopes with SCPQSet {}",
+    CLOG_TRACE(Herder, "Discarding pogcvm Envelopes with pogcvmQSet {}",
                hexAbbrev(hash));
 
     auto envelopes = mQuorumSetFetcher.fetchingFor(hash);
     for (auto& envelope : envelopes)
-        discardSCPEnvelope(envelope);
+        discardpogcvmEnvelope(envelope);
 }
 
 void
@@ -168,8 +168,8 @@ PendingEnvelopes::updateMetrics()
         fetching += v.mFetchingEnvelopes.size();
         ready += v.mReadyEnvelopes.size();
     }
-    TracyPlot("scp.pending.processed", processed);
-    TracyPlot("scp.pending.fetching", fetching);
+    TracyPlot("pogcvm.pending.processed", processed);
+    TracyPlot("pogcvm.pending.fetching", fetching);
     mProcessedCount.set_count(processed);
     mDiscardedCount.set_count(discarded);
     mFetchingCount.set_count(fetching);
@@ -260,7 +260,7 @@ PendingEnvelopes::isNodeDefinitelyInQuorum(NodeID const& node)
 }
 
 static std::string
-txSetsToStr(SCPEnvelope const& envelope)
+txSetsToStr(pogcvmEnvelope const& envelope)
 {
     auto hashes = getTxSetHashes(envelope);
     UnorderedSet<Hash> hashesSet(hashes.begin(), hashes.end());
@@ -275,7 +275,7 @@ txSetsToStr(SCPEnvelope const& envelope)
 
 // called from Peer and when an Item tracker completes
 Herder::EnvelopeStatus
-PendingEnvelopes::recvSCPEnvelope(SCPEnvelope const& envelope)
+PendingEnvelopes::recvpogcvmEnvelope(pogcvmEnvelope const& envelope)
 {
     ZoneScoped;
     auto const& nodeID = envelope.statement.nodeID;
@@ -359,14 +359,14 @@ PendingEnvelopes::recvSCPEnvelope(SCPEnvelope const& envelope)
     catch (xdr::xdr_runtime_error& e)
     {
         CLOG_TRACE(Herder,
-                   "PendingEnvelopes::recvSCPEnvelope got corrupt message: {}",
+                   "PendingEnvelopes::recvpogcvmEnvelope got corrupt message: {}",
                    e.what());
         return Herder::ENVELOPE_STATUS_DISCARDED;
     }
 }
 
 void
-PendingEnvelopes::discardSCPEnvelope(SCPEnvelope const& envelope)
+PendingEnvelopes::discardpogcvmEnvelope(pogcvmEnvelope const& envelope)
 {
     try
     {
@@ -387,14 +387,14 @@ PendingEnvelopes::discardSCPEnvelope(SCPEnvelope const& envelope)
     {
         CLOG_TRACE(
             Herder,
-            "PendingEnvelopes::discardSCPEnvelope got corrupt message: {}",
+            "PendingEnvelopes::discardpogcvmEnvelope got corrupt message: {}",
             e.what());
     }
     updateMetrics();
 }
 
 bool
-PendingEnvelopes::isDiscarded(SCPEnvelope const& envelope) const
+PendingEnvelopes::isDiscarded(pogcvmEnvelope const& envelope) const
 {
     auto envelopes = mEnvelopes.find(envelope.statement.slotIndex);
     if (envelopes == mEnvelopes.end())
@@ -446,7 +446,7 @@ PendingEnvelopes::clearQSetCache()
 #endif
 
 void
-PendingEnvelopes::recordReceivedCost(SCPEnvelope const& env)
+PendingEnvelopes::recordReceivedCost(pogcvmEnvelope const& env)
 {
     ZoneScoped;
 
@@ -513,7 +513,7 @@ PendingEnvelopes::recordReceivedCost(SCPEnvelope const& env)
 }
 
 void
-PendingEnvelopes::envelopeReady(SCPEnvelope const& envelope)
+PendingEnvelopes::envelopeReady(pogcvmEnvelope const& envelope)
 {
     ZoneScoped;
     auto slot = envelope.statement.slotIndex;
@@ -521,22 +521,22 @@ PendingEnvelopes::envelopeReady(SCPEnvelope const& envelope)
                hexAbbrev(xdrSha256(envelope)), slot,
                envelope.statement.pledges.type());
 
-    // envelope has been fetched completely, but SCP has not done
+    // envelope has been fetched completely, but pogcvm has not done
     // any validation on values yet. Regardless, record cost of this
     // envelope.
     recordReceivedCost(envelope);
 
     POGchainMessage msg;
-    msg.type(SCP_MESSAGE);
+    msg.type(pogcvm_MESSAGE);
     msg.envelope() = envelope;
     mApp.getOverlayManager().broadcastMessage(msg);
 
-    auto envW = mHerder.getHerderSCPDriver().wrapEnvelope(envelope);
+    auto envW = mHerder.getHerderpogcvmDriver().wrapEnvelope(envelope);
     mEnvelopes[slot].mReadyEnvelopes.push_back(envW);
 }
 
 bool
-PendingEnvelopes::isFullyFetched(SCPEnvelope const& envelope)
+PendingEnvelopes::isFullyFetched(pogcvmEnvelope const& envelope)
 {
     if (!getKnownQSet(
             Slot::getCompanionQuorumSetHashFromStatement(envelope.statement),
@@ -553,7 +553,7 @@ PendingEnvelopes::isFullyFetched(SCPEnvelope const& envelope)
 }
 
 void
-PendingEnvelopes::startFetch(SCPEnvelope const& envelope)
+PendingEnvelopes::startFetch(pogcvmEnvelope const& envelope)
 {
     ZoneScoped;
     Hash h = Slot::getCompanionQuorumSetHashFromStatement(envelope.statement);
@@ -583,7 +583,7 @@ PendingEnvelopes::startFetch(SCPEnvelope const& envelope)
 }
 
 void
-PendingEnvelopes::stopFetch(SCPEnvelope const& envelope)
+PendingEnvelopes::stopFetch(pogcvmEnvelope const& envelope)
 {
     ZoneScoped;
     Hash h = Slot::getCompanionQuorumSetHashFromStatement(envelope.statement);
@@ -600,7 +600,7 @@ PendingEnvelopes::stopFetch(SCPEnvelope const& envelope)
 }
 
 void
-PendingEnvelopes::touchFetchCache(SCPEnvelope const& envelope)
+PendingEnvelopes::touchFetchCache(pogcvmEnvelope const& envelope)
 {
     auto qsetHash =
         Slot::getCompanionQuorumSetHashFromStatement(envelope.statement);
@@ -612,7 +612,7 @@ PendingEnvelopes::touchFetchCache(SCPEnvelope const& envelope)
     }
 }
 
-SCPEnvelopeWrapperPtr
+pogcvmEnvelopeWrapperPtr
 PendingEnvelopes::pop(uint64 slotIndex)
 {
     auto it = mEnvelopes.begin();
@@ -703,7 +703,7 @@ PendingEnvelopes::getTxSet(Hash const& hash)
     return getKnownTxSet(hash, 0, false);
 }
 
-SCPQuorumSetPtr
+pogcvmQuorumSetPtr
 PendingEnvelopes::getQSet(Hash const& hash)
 {
     auto qset = getKnownQSet(hash, false);
@@ -712,10 +712,10 @@ PendingEnvelopes::getQSet(Hash const& hash)
         return qset;
     }
     // if it was not known, see if we can find it somewhere else
-    auto& scp = mHerder.getSCP();
-    if (hash == scp.getLocalNode()->getQuorumSetHash())
+    auto& pogcvm = mHerder.getpogcvm();
+    if (hash == pogcvm.getLocalNode()->getQuorumSetHash())
     {
-        qset = make_shared<SCPQuorumSet>(scp.getLocalQuorumSet());
+        qset = make_shared<pogcvmQuorumSet>(pogcvm.getLocalQuorumSet());
     }
     else
     {
@@ -736,7 +736,7 @@ PendingEnvelopes::getJsonInfo(size_t limit)
 
     updateMetrics();
 
-    auto& scp = mHerder.getSCP();
+    auto& pogcvm = mHerder.getpogcvm();
     {
         auto it = mEnvelopes.rbegin();
         size_t l = limit;
@@ -747,7 +747,7 @@ PendingEnvelopes::getJsonInfo(size_t limit)
                 Json::Value& slot = ret[std::to_string(it->first)]["fetching"];
                 for (auto const& kv : it->second.mFetchingEnvelopes)
                 {
-                    slot.append(scp.envToStr(kv.first));
+                    slot.append(pogcvm.envToStr(kv.first));
                 }
             }
             if (it->second.mReadyEnvelopes.size() != 0)
@@ -755,7 +755,7 @@ PendingEnvelopes::getJsonInfo(size_t limit)
                 Json::Value& slot = ret[std::to_string(it->first)]["pending"];
                 for (auto const& e : it->second.mReadyEnvelopes)
                 {
-                    slot.append(scp.envToStr(e->getEnvelope()));
+                    slot.append(pogcvm.envToStr(e->getEnvelope()));
                 }
             }
             it++;
@@ -769,15 +769,15 @@ PendingEnvelopes::rebuildQuorumTrackerState()
 {
     // rebuild quorum information using data sources starting with the
     // freshest source
-    mQuorumTracker.rebuild([&](NodeID const& id) -> SCPQuorumSetPtr {
-        SCPQuorumSetPtr res;
-        if (id == mHerder.getSCP().getLocalNodeID())
+    mQuorumTracker.rebuild([&](NodeID const& id) -> pogcvmQuorumSetPtr {
+        pogcvmQuorumSetPtr res;
+        if (id == mHerder.getpogcvm().getLocalNodeID())
         {
-            res = getQSet(mHerder.getSCP().getLocalNode()->getQuorumSetHash());
+            res = getQSet(mHerder.getpogcvm().getLocalNode()->getQuorumSetHash());
         }
         else
         {
-            auto m = mHerder.getSCP().getLatestMessage(id);
+            auto m = mHerder.getpogcvm().getLatestMessage(id);
             if (m != nullptr)
             {
                 auto h =
@@ -807,14 +807,14 @@ PendingEnvelopes::getCurrentlyTrackedQuorum() const
 }
 
 void
-PendingEnvelopes::envelopeProcessed(SCPEnvelope const& env)
+PendingEnvelopes::envelopeProcessed(pogcvmEnvelope const& env)
 {
     auto const& st = env.statement;
     auto const& id = st.nodeID;
 
     auto h = Slot::getCompanionQuorumSetHashFromStatement(st);
 
-    SCPQuorumSetPtr qset = getQSet(h);
+    pogcvmQuorumSetPtr qset = getQSet(h);
     if (!mQuorumTracker.expand(id, qset))
     {
         // could not expand quorum, queue up a rebuild
@@ -839,7 +839,7 @@ shouldReportCostOutlier(double possibleOutlierCost, double expectedCost,
 {
     if (possibleOutlierCost <= 0 || expectedCost <= 0)
     {
-        CLOG_ERROR(SCP, "Unexpected k-means value: must be positive");
+        CLOG_ERROR(pogcvm, "Unexpected k-means value: must be positive");
         return false;
     }
 
@@ -891,7 +891,7 @@ PendingEnvelopes::reportCostOutliersForSlot(int64_t slotIndex,
 
         if (clusters.empty() || *(clusters.begin()) <= 0)
         {
-            CLOG_ERROR(SCP,
+            CLOG_ERROR(pogcvm,
                        "Expected non-empty set of positive cluster centers");
         }
         else
@@ -913,7 +913,7 @@ PendingEnvelopes::reportCostOutliersForSlot(int64_t slotIndex,
             Json::FastWriter fw;
             if (!res.empty())
             {
-                CLOG_WARNING(SCP, "High validator costs for slot {}: {}",
+                CLOG_WARNING(pogcvm, "High validator costs for slot {}: {}",
                              slotIndex, fw.write(res));
             }
         }

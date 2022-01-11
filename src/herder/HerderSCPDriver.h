@@ -7,7 +7,7 @@
 #include "herder/Herder.h"
 #include "herder/TxSetFrame.h"
 #include "medida/timer.h"
-#include "scp/SCPDriver.h"
+#include "pogcvm/pogcvmDriver.h"
 #include "xdr/POGchain-ledger.h"
 #include <optional>
 
@@ -24,41 +24,41 @@ class Application;
 class HerderImpl;
 class LedgerManager;
 class PendingEnvelopes;
-class SCP;
+class pogcvm;
 class Upgrades;
 class VirtualTimer;
 struct POGchainValue;
-struct SCPEnvelope;
+struct pogcvmEnvelope;
 
-class HerderSCPDriver : public SCPDriver
+class HerderpogcvmDriver : public pogcvmDriver
 {
   public:
-    HerderSCPDriver(Application& app, HerderImpl& herder,
+    HerderpogcvmDriver(Application& app, HerderImpl& herder,
                     Upgrades const& upgrades,
                     PendingEnvelopes& pendingEnvelopes);
-    ~HerderSCPDriver();
+    ~HerderpogcvmDriver();
 
     void bootstrap();
     void stateChanged();
 
-    SCP&
-    getSCP()
+    pogcvm&
+    getpogcvm()
     {
-        return mSCP;
+        return mpogcvm;
     }
 
-    void recordSCPExecutionMetrics(uint64_t slotIndex);
-    void recordSCPEvent(uint64_t slotIndex, bool isNomination);
-    void recordSCPExternalizeEvent(uint64_t slotIndex, NodeID const& id,
+    void recordpogcvmExecutionMetrics(uint64_t slotIndex);
+    void recordpogcvmEvent(uint64_t slotIndex, bool isNomination);
+    void recordpogcvmExternalizeEvent(uint64_t slotIndex, NodeID const& id,
                                    bool forceUpdateSelf);
 
     // envelope handling
-    SCPEnvelopeWrapperPtr wrapEnvelope(SCPEnvelope const& envelope) override;
-    void signEnvelope(SCPEnvelope& envelope) override;
-    void emitEnvelope(SCPEnvelope const& envelope) override;
+    pogcvmEnvelopeWrapperPtr wrapEnvelope(pogcvmEnvelope const& envelope) override;
+    void signEnvelope(pogcvmEnvelope& envelope) override;
+    void emitEnvelope(pogcvmEnvelope const& envelope) override;
 
     // value validation
-    SCPDriver::ValidationLevel validateValue(uint64_t slotIndex,
+    pogcvmDriver::ValidationLevel validateValue(uint64_t slotIndex,
                                              Value const& value,
                                              bool nomination) override;
     ValueWrapperPtr extractValidValue(uint64_t slotIndex,
@@ -76,7 +76,7 @@ class HerderSCPDriver : public SCPDriver
     // hashing support
     Hash getHashOf(std::vector<xdr::opaque_vec<>> const& vals) const override;
 
-    //  SCP
+    //  pogcvm
     ValueWrapperPtr
     combineCandidates(uint64_t slotIndex,
                       ValueWrapperPtrSet const& candidates) override;
@@ -87,20 +87,20 @@ class HerderSCPDriver : public SCPDriver
     void nominate(uint64_t slotIndex, POGchainValue const& value,
                   TxSetFramePtr proposedSet, POGchainValue const& previousValue);
 
-    SCPQuorumSetPtr getQSet(Hash const& qSetHash) override;
+    pogcvmQuorumSetPtr getQSet(Hash const& qSetHash) override;
 
     // listeners
     void ballotDidHearFromQuorum(uint64_t slotIndex,
-                                 SCPBallot const& ballot) override;
+                                 pogcvmBallot const& ballot) override;
     void nominatingValue(uint64_t slotIndex, Value const& value) override;
     void updatedCandidateValue(uint64_t slotIndex, Value const& value) override;
     void startedBallotProtocol(uint64_t slotIndex,
-                               SCPBallot const& ballot) override;
+                               pogcvmBallot const& ballot) override;
     void acceptedBallotPrepared(uint64_t slotIndex,
-                                SCPBallot const& ballot) override;
+                                pogcvmBallot const& ballot) override;
     void confirmedBallotPrepared(uint64_t slotIndex,
-                                 SCPBallot const& ballot) override;
-    void acceptedCommit(uint64_t slotIndex, SCPBallot const& ballot) override;
+                                 pogcvmBallot const& ballot) override;
+    void acceptedCommit(uint64_t slotIndex, pogcvmBallot const& ballot) override;
 
     std::optional<VirtualClock::time_point> getPrepareStart(uint64_t slotIndex);
 
@@ -130,9 +130,9 @@ class HerderSCPDriver : public SCPDriver
     LedgerManager& mLedgerManager;
     Upgrades const& mUpgrades;
     PendingEnvelopes& mPendingEnvelopes;
-    SCP mSCP;
+    pogcvm mpogcvm;
 
-    struct SCPMetrics
+    struct pogcvmMetrics
     {
         medida::Meter& mEnvelopeSign;
 
@@ -150,10 +150,10 @@ class HerderSCPDriver : public SCPDriver
         medida::Timer& mFirstToSelfExternalizeLag;
         medida::Timer& mSelfToOthersExternalizeLag;
 
-        SCPMetrics(Application& app);
+        pogcvmMetrics(Application& app);
     };
 
-    SCPMetrics mSCPMetrics;
+    pogcvmMetrics mpogcvmMetrics;
 
     // Nomination timeouts per ledger
     medida::Histogram& mNominateTimeout;
@@ -163,7 +163,7 @@ class HerderSCPDriver : public SCPDriver
     // Externalize lag tracking for nodes in qset
     UnorderedMap<NodeID, medida::Timer> mQSetLag;
 
-    struct SCPTiming
+    struct pogcvmTiming
     {
         std::optional<VirtualClock::time_point> mNominationStart;
         std::optional<VirtualClock::time_point> mPrepareStart;
@@ -181,22 +181,22 @@ class HerderSCPDriver : public SCPDriver
     // Map of time points for each slot to measure key protocol metrics:
     // * nomination to first prepare
     // * first prepare to externalize
-    std::map<uint64_t, SCPTiming> mSCPExecutionTimes;
+    std::map<uint64_t, pogcvmTiming> mpogcvmExecutionTimes;
 
     uint32_t mLedgerSeqNominating;
     ValueWrapperPtr mCurrentValue;
 
-    // timers used by SCP
+    // timers used by pogcvm
     // indexed by slotIndex, timerID
-    std::map<uint64_t, std::map<int, std::unique_ptr<VirtualTimer>>> mSCPTimers;
+    std::map<uint64_t, std::map<int, std::unique_ptr<VirtualTimer>>> mpogcvmTimers;
 
-    SCPDriver::ValidationLevel validateValueHelper(uint64_t slotIndex,
+    pogcvmDriver::ValidationLevel validateValueHelper(uint64_t slotIndex,
                                                    POGchainValue const& sv,
                                                    bool nomination) const;
 
     void logQuorumInformation(uint64_t index);
 
-    void clearSCPExecutionEvents();
+    void clearpogcvmExecutionEvents();
 
     void timerCallbackWrapper(uint64_t slotIndex, int timerID,
                               std::function<void()> cb);

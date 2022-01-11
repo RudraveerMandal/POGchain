@@ -1,7 +1,7 @@
 #include "lib/catch.hpp"
-#include "scp/LocalNode.h"
-#include "scp/SCP.h"
-#include "scp/Slot.h"
+#include "pogcvm/LocalNode.h"
+#include "pogcvm/pogcvm.h"
+#include "pogcvm/Slot.h"
 #include "simulation/Simulation.h"
 #include "util/Logging.h"
 #include "xdrpp/marshal.h"
@@ -15,7 +15,7 @@ isNear(uint64 r, double target)
     return (std::abs(v - target) < .01);
 }
 
-TEST_CASE("nomination weight", "[scp]")
+TEST_CASE("nomination weight", "[pogcvm]")
 {
     SIMULATION_CREATE_NODE(0);
     SIMULATION_CREATE_NODE(1);
@@ -24,7 +24,7 @@ TEST_CASE("nomination weight", "[scp]")
     SIMULATION_CREATE_NODE(4);
     SIMULATION_CREATE_NODE(5);
 
-    SCPQuorumSet qSet;
+    pogcvmQuorumSet qSet;
     qSet.threshold = 3;
     qSet.validators.push_back(v0NodeID);
     qSet.validators.push_back(v1NodeID);
@@ -38,7 +38,7 @@ TEST_CASE("nomination weight", "[scp]")
     result = LocalNode::getNodeWeight(v4NodeID, qSet);
     REQUIRE(result == 0);
 
-    SCPQuorumSet iQSet;
+    pogcvmQuorumSet iQSet;
     iQSet.threshold = 1;
     iQSet.validators.push_back(v4NodeID);
     iQSet.validators.push_back(v5NodeID);
@@ -49,38 +49,38 @@ TEST_CASE("nomination weight", "[scp]")
     REQUIRE(isNear(result, .6 * .5));
 }
 
-class TestNominationSCP : public SCPDriver
+class TestNominationpogcvm : public pogcvmDriver
 {
   public:
-    SCP mSCP;
-    TestNominationSCP(NodeID const& nodeID, SCPQuorumSet const& qSetLocal)
-        : mSCP(*this, nodeID, true, qSetLocal)
+    pogcvm mpogcvm;
+    TestNominationpogcvm(NodeID const& nodeID, pogcvmQuorumSet const& qSetLocal)
+        : mpogcvm(*this, nodeID, true, qSetLocal)
     {
         auto localQSet =
-            std::make_shared<SCPQuorumSet>(mSCP.getLocalQuorumSet());
+            std::make_shared<pogcvmQuorumSet>(mpogcvm.getLocalQuorumSet());
         storeQuorumSet(localQSet);
     }
 
     void
-    signEnvelope(SCPEnvelope&) override
+    signEnvelope(pogcvmEnvelope&) override
     {
     }
 
     void
-    storeQuorumSet(SCPQuorumSetPtr qSet)
+    storeQuorumSet(pogcvmQuorumSetPtr qSet)
     {
         Hash qSetHash = sha256(xdr::xdr_to_opaque(*qSet.get()));
         mQuorumSets[qSetHash] = qSet;
     }
 
-    SCPDriver::ValidationLevel
+    pogcvmDriver::ValidationLevel
     validateValue(uint64 slotIndex, Value const& value,
                   bool nomination) override
     {
-        return SCPDriver::kFullyValidatedValue;
+        return pogcvmDriver::kFullyValidatedValue;
     }
 
-    SCPQuorumSetPtr
+    pogcvmQuorumSetPtr
     getQSet(Hash const& qSetHash) override
     {
         if (mQuorumSets.find(qSetHash) != mQuorumSets.end())
@@ -88,11 +88,11 @@ class TestNominationSCP : public SCPDriver
 
             return mQuorumSets[qSetHash];
         }
-        return SCPQuorumSetPtr();
+        return pogcvmQuorumSetPtr();
     }
 
     void
-    emitEnvelope(SCPEnvelope const& envelope) override
+    emitEnvelope(pogcvmEnvelope const& envelope) override
     {
     }
 
@@ -109,7 +109,7 @@ class TestNominationSCP : public SCPDriver
     {
     }
 
-    std::map<Hash, SCPQuorumSetPtr> mQuorumSets;
+    std::map<Hash, pogcvmQuorumSetPtr> mQuorumSets;
 
     Value const&
     getLatestCompositeCandidate(uint64 slotIndex)
@@ -162,17 +162,17 @@ class NominationTestHandler : public NominationProtocol
     }
 
     uint64
-    getNodePriority(NodeID const& nodeID, SCPQuorumSet const& qset)
+    getNodePriority(NodeID const& nodeID, pogcvmQuorumSet const& qset)
     {
         return NominationProtocol::getNodePriority(nodeID, qset);
     }
 };
 
-static SCPQuorumSet
+static pogcvmQuorumSet
 makeQSet(std::vector<NodeID> const& nodeIDs, int threshold, int total,
          int offset)
 {
-    SCPQuorumSet qSet;
+    pogcvmQuorumSet qSet;
     qSet.threshold = threshold;
     for (int i = 0; i < total; i++)
     {
@@ -183,7 +183,7 @@ makeQSet(std::vector<NodeID> const& nodeIDs, int threshold, int total,
 
 // this test case display statistical information on the priority function used
 // by nomination
-TEST_CASE("nomination weight stats", "[scp][!hide]")
+TEST_CASE("nomination weight stats", "[pogcvm][!hide]")
 {
     SIMULATION_CREATE_NODE(0);
     SIMULATION_CREATE_NODE(1);
@@ -201,13 +201,13 @@ TEST_CASE("nomination weight stats", "[scp][!hide]")
     int const maxRoundPerSlot = 5; // 5 -> 15 seconds
     int const totalRounds = totalSlots * maxRoundPerSlot;
 
-    auto runTests = [&](SCPQuorumSet qSet) {
+    auto runTests = [&](pogcvmQuorumSet qSet) {
         std::map<NodeID, int> wins;
 
-        TestNominationSCP nomSCP(v0NodeID, qSet);
+        TestNominationpogcvm nompogcvm(v0NodeID, qSet);
         for (int s = 0; s < totalSlots; s++)
         {
-            Slot slot(s, nomSCP.mSCP);
+            Slot slot(s, nompogcvm.mpogcvm);
 
             NominationTestHandler nom(slot);
 
@@ -241,7 +241,7 @@ TEST_CASE("nomination weight stats", "[scp][!hide]")
             for (auto& w : wins)
             {
                 double stats = double(w.second * 100) / double(totalRounds);
-                CLOG_INFO(SCP, "Got {}{}", stats,
+                CLOG_INFO(pogcvm, "Got {}{}", stats,
                           ((v0NodeID == w.first) ? " LOCAL" : ""));
             }
         };
@@ -270,14 +270,14 @@ TEST_CASE("nomination weight stats", "[scp][!hide]")
             bool outer =
                 std::any_of(qSet.validators.begin(), qSet.validators.end(),
                             [&](auto const& k) { return k == w.first; });
-            CLOG_INFO(SCP, "Got {} {}", stats,
+            CLOG_INFO(pogcvm, "Got {} {}", stats,
                       ((v0NodeID == w.first) ? "LOCAL"
                                              : (outer ? "OUTER" : "INNER")));
         }
     }
 }
 
-TEST_CASE("nomination two nodes win stats", "[scp][!hide]")
+TEST_CASE("nomination two nodes win stats", "[pogcvm][!hide]")
 {
     int const nbRoundsForStats = 9;
     SIMULATION_CREATE_NODE(0);
@@ -297,18 +297,18 @@ TEST_CASE("nomination two nodes win stats", "[scp][!hide]")
     // maxRounds is the number of rounds to evaluate in a row
     // the iteration is considered successful if validators could
     // agree on what to nominate before maxRounds is reached
-    auto nominationLeaders = [&](int maxRounds, SCPQuorumSet qSetNode0,
-                                 SCPQuorumSet qSetNode1) {
-        TestNominationSCP nomSCP0(v0NodeID, qSetNode0);
-        TestNominationSCP nomSCP1(v1NodeID, qSetNode1);
+    auto nominationLeaders = [&](int maxRounds, pogcvmQuorumSet qSetNode0,
+                                 pogcvmQuorumSet qSetNode1) {
+        TestNominationpogcvm nompogcvm0(v0NodeID, qSetNode0);
+        TestNominationpogcvm nompogcvm1(v1NodeID, qSetNode1);
 
         int tot = 0;
         for (int g = 0; g < totalIter; g++)
         {
-            Slot slot0(0, nomSCP0.mSCP);
+            Slot slot0(0, nompogcvm0.mpogcvm);
             NominationTestHandler nom0(slot0);
 
-            Slot slot1(0, nomSCP1.mSCP);
+            Slot slot1(0, nompogcvm1.mpogcvm);
             NominationTestHandler nom1(slot1);
 
             Value v;
@@ -376,7 +376,7 @@ TEST_CASE("nomination two nodes win stats", "[scp][!hide]")
             {
                 int tot = nominationLeaders(maxRounds, qSet, qSet);
                 double stats = double(tot * 100) / double(totalIter);
-                CLOG_INFO(SCP, "Win rate for {} : {}", maxRounds, stats);
+                CLOG_INFO(pogcvm, "Win rate for {} : {}", maxRounds, stats);
             }
         };
 
@@ -403,7 +403,7 @@ TEST_CASE("nomination two nodes win stats", "[scp][!hide]")
             {
                 int tot = nominationLeaders(maxRounds, qSet, qSet);
                 double stats = double(tot * 100) / double(totalIter);
-                CLOG_INFO(SCP, "Win rate for {} : {}", maxRounds, stats);
+                CLOG_INFO(pogcvm, "Win rate for {} : {}", maxRounds, stats);
             }
         }
         SECTION("v0 is inner node for v1")
@@ -421,7 +421,7 @@ TEST_CASE("nomination two nodes win stats", "[scp][!hide]")
             {
                 int tot = nominationLeaders(maxRounds, qSet0, qSet1);
                 double stats = double(tot * 100) / double(totalIter);
-                CLOG_INFO(SCP, "Win rate for {} : {}", maxRounds, stats);
+                CLOG_INFO(pogcvm, "Win rate for {} : {}", maxRounds, stats);
             }
         }
     }

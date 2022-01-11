@@ -9,78 +9,78 @@ namespace POGchain
 
 typedef opaque Value<>;
 
-struct SCPBallot
+struct pogcvmBallot
 {
     uint32 counter; // n
     Value value;    // x
 };
 
-enum SCPStatementType
+enum pogcvmStatementType
 {
-    SCP_ST_PREPARE = 0,
-    SCP_ST_CONFIRM = 1,
-    SCP_ST_EXTERNALIZE = 2,
-    SCP_ST_NOMINATE = 3
+    pogcvm_ST_PREPARE = 0,
+    pogcvm_ST_CONFIRM = 1,
+    pogcvm_ST_EXTERNALIZE = 2,
+    pogcvm_ST_NOMINATE = 3
 };
 
-struct SCPNomination
+struct pogcvmNomination
 {
     Hash quorumSetHash; // D
     Value votes<>;      // X
     Value accepted<>;   // Y
 };
 
-struct SCPStatement
+struct pogcvmStatement
 {
     NodeID nodeID;    // v
     uint64 slotIndex; // i
 
-    union switch (SCPStatementType type)
+    union switch (pogcvmStatementType type)
     {
-    case SCP_ST_PREPARE:
+    case pogcvm_ST_PREPARE:
         struct
         {
             Hash quorumSetHash;       // D
-            SCPBallot ballot;         // b
-            SCPBallot* prepared;      // p
-            SCPBallot* preparedPrime; // p'
+            pogcvmBallot ballot;         // b
+            pogcvmBallot* prepared;      // p
+            pogcvmBallot* preparedPrime; // p'
             uint32 nC;                // c.n
             uint32 nH;                // h.n
         } prepare;
-    case SCP_ST_CONFIRM:
+    case pogcvm_ST_CONFIRM:
         struct
         {
-            SCPBallot ballot;   // b
+            pogcvmBallot ballot;   // b
             uint32 nPrepared;   // p.n
             uint32 nCommit;     // c.n
             uint32 nH;          // h.n
             Hash quorumSetHash; // D
         } confirm;
-    case SCP_ST_EXTERNALIZE:
+    case pogcvm_ST_EXTERNALIZE:
         struct
         {
-            SCPBallot commit;         // c
+            pogcvmBallot commit;         // c
             uint32 nH;                // h.n
             Hash commitQuorumSetHash; // D used before EXTERNALIZE
         } externalize;
-    case SCP_ST_NOMINATE:
-        SCPNomination nominate;
+    case pogcvm_ST_NOMINATE:
+        pogcvmNomination nominate;
     }
     pledges;
 };
 
-struct SCPEnvelope
+struct pogcvmEnvelope
 {
-    SCPStatement statement;
+    pogcvmStatement statement;
     Signature signature;
 };
 
 // supports things like: A,B,C,(D,E,F),(G,H,(I,J,K,L))
 // only allows 2 levels of nesting
-struct SCPQuorumSet
+struct pogcvmQuorumSet
 {
     uint32 threshold;
     NodeID validators<>;
-    SCPQuorumSet innerSets<>;
+    pogcvmQuorumSet innerSets<>;
 };
 }

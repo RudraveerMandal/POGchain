@@ -48,7 +48,7 @@ printStats(int& nLedgers, std::chrono::system_clock::time_point tBegin,
              "Time spent closing {} ledgers with {} nodes : {} seconds",
              nLedgers, sim->getNodes().size(), t.count());
 
-    LOG_INFO(DEFAULT_LOG, "{}", sim->metricsSummary("scp"));
+    LOG_INFO(DEFAULT_LOG, "{}", sim->metricsSummary("pogcvm"));
 }
 
 TEST_CASE("3 nodes 2 running threshold 2", "[simulation][3][acceptance]")
@@ -76,7 +76,7 @@ TEST_CASE("3 nodes 2 running threshold 2", "[simulation][3][acceptance]")
                 SecretKey::fromSeed(sha256("NODE_SEED_" + std::to_string(i))));
         }
 
-        SCPQuorumSet qSet;
+        pogcvmQuorumSet qSet;
         qSet.threshold = 2;
         for (auto& k : keys)
         {
@@ -207,8 +207,8 @@ resilienceTest(Simulation::pointer sim)
             sim->getNode(otherID)->getLedgerManager().getLastClosedLedgerNum();
 
         auto victimConfig = sim->getNode(victimID)->getConfig();
-        // don't force SCP, it's just a restart
-        victimConfig.FORCE_SCP = false;
+        // don't force pogcvm, it's just a restart
+        victimConfig.FORCE_pogcvm = false;
         // kill instance
         sim->removeNode(victimID);
         // let the rest of the network move on
@@ -225,9 +225,9 @@ resilienceTest(Simulation::pointer sim)
 
         // check that all slots were validated
         auto herderImpl = static_cast<HerderImpl*>(&refreshedApp->getHerder());
-        auto& scp = herderImpl->getSCP();
-        scp.processSlotsAscendingFrom(0, [&](uint64 slot) {
-            bool validated = scp.isSlotFullyValidated(slot);
+        auto& pogcvm = herderImpl->getpogcvm();
+        pogcvm.processSlotsAscendingFrom(0, [&](uint64 slot) {
+            bool validated = pogcvm.isSlotFullyValidated(slot);
             REQUIRE(validated);
             return true;
         });

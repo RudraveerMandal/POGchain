@@ -10,10 +10,10 @@
 namespace POGchain
 {
 
-struct SCPEnvelope;
-struct SCPStatement;
+struct pogcvmEnvelope;
+struct pogcvmStatement;
 struct POGchainValue;
 
-std::vector<Hash> getTxSetHashes(SCPEnvelope const& envelope);
-std::vector<POGchainValue> getPOGchainValues(SCPStatement const& envelope);
+std::vector<Hash> getTxSetHashes(pogcvmEnvelope const& envelope);
+std::vector<POGchainValue> getPOGchainValues(pogcvmStatement const& envelope);
 }

@@ -16,12 +16,12 @@ namespace POGchain
 namespace
 {
 
-SCPEnvelope
+pogcvmEnvelope
 makeEnvelope(int slotIndex)
 {
-    auto result = SCPEnvelope{};
+    auto result = pogcvmEnvelope{};
     result.statement.slotIndex = slotIndex;
-    result.statement.pledges.type(SCP_ST_CONFIRM);
+    result.statement.pledges.type(pogcvm_ST_CONFIRM);
     result.statement.pledges.confirm().nPrepared = slotIndex;
     return result;
 }

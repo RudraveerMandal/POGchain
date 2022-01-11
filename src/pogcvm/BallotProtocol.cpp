@@ -7,8 +7,8 @@
 #include "Slot.h"
 #include "crypto/Hex.h"
 #include "lib/json/json.h"
-#include "scp/LocalNode.h"
-#include "scp/QuorumSetUtils.h"
+#include "pogcvm/LocalNode.h"
+#include "pogcvm/QuorumSetUtils.h"
 #include "util/GlobalChecks.h"
 #include "util/Logging.h"
 #include "util/XDROperators.h"
@@ -28,13 +28,13 @@ static const int MAX_ADVANCE_SLOT_RECURSION = 50;
 BallotProtocol::BallotProtocol(Slot& slot)
     : mSlot(slot)
     , mHeardFromQuorum(false)
-    , mPhase(SCP_PHASE_PREPARE)
+    , mPhase(pogcvm_PHASE_PREPARE)
     , mCurrentMessageLevel(0)
 {
 }
 
 bool
-BallotProtocol::isNewerStatement(NodeID const& nodeID, SCPStatement const& st)
+BallotProtocol::isNewerStatement(NodeID const& nodeID, pogcvmStatement const& st)
 {
     auto oldp = mLatestEnvelopes.find(nodeID);
     bool res = false;
@@ -51,12 +51,12 @@ BallotProtocol::isNewerStatement(NodeID const& nodeID, SCPStatement const& st)
 }
 
 bool
-BallotProtocol::isNewerStatement(SCPStatement const& oldst,
-                                 SCPStatement const& st)
+BallotProtocol::isNewerStatement(pogcvmStatement const& oldst,
+                                 pogcvmStatement const& st)
 {
     bool res = false;
 
-    // total ordering described in SCP paper.
+    // total ordering described in pogcvm paper.
     auto t = st.pledges.type();
 
     // statement type (PREPARE < CONFIRM < EXTERNALIZE)
@@ -67,11 +67,11 @@ BallotProtocol::isNewerStatement(SCPStatement const& oldst,
     else
     {
         // can't have duplicate EXTERNALIZE statements
-        if (t == SCPStatementType::SCP_ST_EXTERNALIZE)
+        if (t == pogcvmStatementType::pogcvm_ST_EXTERNALIZE)
         {
             res = false;
         }
-        else if (t == SCPStatementType::SCP_ST_CONFIRM)
+        else if (t == pogcvmStatementType::pogcvm_ST_CONFIRM)
         {
             // sorted by (b, p, p', h) (p' = 0 implicitly)
             auto const& oldC = oldst.pledges.confirm();
@@ -133,7 +133,7 @@ BallotProtocol::isNewerStatement(SCPStatement const& oldst,
 }
 
 void
-BallotProtocol::recordEnvelope(SCPEnvelopeWrapperPtr env)
+BallotProtocol::recordEnvelope(pogcvmEnvelopeWrapperPtr env)
 {
     auto const& st = env->getStatement();
     auto oldp = mLatestEnvelopes.find(st.nodeID);
@@ -148,101 +148,101 @@ BallotProtocol::recordEnvelope(SCPEnvelopeWrapperPtr env)
     mSlot.recordStatement(env->getStatement());
 }
 
-SCP::EnvelopeState
-BallotProtocol::processEnvelope(SCPEnvelopeWrapperPtr envelope, bool self)
+pogcvm::EnvelopeState
+BallotProtocol::processEnvelope(pogcvmEnvelopeWrapperPtr envelope, bool self)
 {
     ZoneScoped;
     dbgAssert(envelope->getStatement().slotIndex == mSlot.getSlotIndex());
 
-    SCPStatement const& statement = envelope->getStatement();
+    pogcvmStatement const& statement = envelope->getStatement();
     NodeID const& nodeID = statement.nodeID;
 
     if (!isStatementSane(statement, self))
     {
         if (self)
         {
-            CLOG_ERROR(SCP, "not sane statement from self, skipping   e: {}",
-                       mSlot.getSCP().envToStr(envelope->getEnvelope()));
+            CLOG_ERROR(pogcvm, "not sane statement from self, skipping   e: {}",
+                       mSlot.getpogcvm().envToStr(envelope->getEnvelope()));
         }
 
-        return SCP::EnvelopeState::INVALID;
+        return pogcvm::EnvelopeState::INVALID;
     }
 
     if (!isNewerStatement(nodeID, statement))
     {
         if (self)
         {
-            CLOG_ERROR(SCP, "stale statement from self, skipping   e: {}",
-                       mSlot.getSCP().envToStr(envelope->getEnvelope()));
+            CLOG_ERROR(pogcvm, "stale statement from self, skipping   e: {}",
+                       mSlot.getpogcvm().envToStr(envelope->getEnvelope()));
         }
         else
         {
-            CLOG_TRACE(SCP, "stale statement, skipping  i: {}",
+            CLOG_TRACE(pogcvm, "stale statement, skipping  i: {}",
                        mSlot.getSlotIndex());
         }
 
-        return SCP::EnvelopeState::INVALID;
+        return pogcvm::EnvelopeState::INVALID;
     }
 
     auto validationRes = validateValues(statement);
 
     // If the value is not valid, we just ignore it.
-    if (validationRes == SCPDriver::kInvalidValue)
+    if (validationRes == pogcvmDriver::kInvalidValue)
     {
         if (self)
         {
-            CLOG_ERROR(SCP, "invalid value from self, skipping   e: {}",
-                       mSlot.getSCP().envToStr(envelope->getEnvelope()));
+            CLOG_ERROR(pogcvm, "invalid value from self, skipping   e: {}",
+                       mSlot.getpogcvm().envToStr(envelope->getEnvelope()));
         }
         else
         {
-            CLOG_TRACE(SCP, "invalid value  i: {}", mSlot.getSlotIndex());
+            CLOG_TRACE(pogcvm, "invalid value  i: {}", mSlot.getSlotIndex());
         }
 
-        return SCP::EnvelopeState::INVALID;
+        return pogcvm::EnvelopeState::INVALID;
     }
 
-    if (mPhase != SCP_PHASE_EXTERNALIZE)
+    if (mPhase != pogcvm_PHASE_EXTERNALIZE)
     {
-        if (validationRes == SCPDriver::kMaybeValidValue)
+        if (validationRes == pogcvmDriver::kMaybeValidValue)
         {
             mSlot.setFullyValidated(false);
         }
 
         recordEnvelope(envelope);
         advanceSlot(statement);
-        return SCP::EnvelopeState::VALID;
+        return pogcvm::EnvelopeState::VALID;
     }
 
     // note: this handles also our own messages
     // in particular our final EXTERNALIZE message
-    dbgAssert(mPhase == SCP_PHASE_EXTERNALIZE);
+    dbgAssert(mPhase == pogcvm_PHASE_EXTERNALIZE);
     if (mCommit->getBallot().value == getWorkingBallot(statement).value)
     {
         recordEnvelope(envelope);
-        return SCP::EnvelopeState::VALID;
+        return pogcvm::EnvelopeState::VALID;
     }
 
     if (self)
     {
-        CLOG_ERROR(SCP,
+        CLOG_ERROR(pogcvm,
                    "externalize statement with invalid value from "
                    "self, skipping e: {}",
-                   mSlot.getSCP().envToStr(envelope->getEnvelope()));
+                   mSlot.getpogcvm().envToStr(envelope->getEnvelope()));
     }
 
-    return SCP::EnvelopeState::INVALID;
+    return pogcvm::EnvelopeState::INVALID;
 }
 
 bool
-BallotProtocol::isStatementSane(SCPStatement const& st, bool self)
+BallotProtocol::isStatementSane(pogcvmStatement const& st, bool self)
 {
     auto qSet = mSlot.getQuorumSetFromStatement(st);
     const char* errString = nullptr;
     bool res = qSet != nullptr && isQuorumSetSane(*qSet, false, errString);
     if (!res)
     {
-        CLOG_DEBUG(SCP, "Invalid quorum set received : {}",
+        CLOG_DEBUG(pogcvm, "Invalid quorum set received : {}",
                    (errString ? errString : "<empty>"));
 
         return false;
@@ -250,7 +250,7 @@ BallotProtocol::isStatementSane(SCPStatement const& st, bool self)
 
     switch (st.pledges.type())
     {
-    case SCPStatementType::SCP_ST_PREPARE:
+    case pogcvmStatementType::pogcvm_ST_PREPARE:
     {
         auto const& p = st.pledges.prepare();
         // self is allowed to have b = 0 (as long as it never gets emitted)
@@ -269,12 +269,12 @@ BallotProtocol::isStatementSane(SCPStatement const& st, bool self)
 
         if (!isOK)
         {
-            CLOG_TRACE(SCP, "Malformed PREPARE message");
+            CLOG_TRACE(pogcvm, "Malformed PREPARE message");
             res = false;
         }
     }
     break;
-    case SCPStatementType::SCP_ST_CONFIRM:
+    case pogcvmStatementType::pogcvm_ST_CONFIRM:
     {
         auto const& c = st.pledges.confirm();
         // c <= h <= b
@@ -283,11 +283,11 @@ BallotProtocol::isStatementSane(SCPStatement const& st, bool self)
         res = res && (c.nCommit <= c.nH);
         if (!res)
         {
-            CLOG_TRACE(SCP, "Malformed CONFIRM message");
+            CLOG_TRACE(pogcvm, "Malformed CONFIRM message");
         }
     }
     break;
-    case SCPStatementType::SCP_ST_EXTERNALIZE:
+    case pogcvmStatementType::pogcvm_ST_EXTERNALIZE:
     {
         auto const& e = st.pledges.externalize();
 
@@ -296,7 +296,7 @@ BallotProtocol::isStatementSane(SCPStatement const& st, bool self)
 
         if (!res)
         {
-            CLOG_TRACE(SCP, "Malformed EXTERNALIZE message");
+            CLOG_TRACE(pogcvm, "Malformed EXTERNALIZE message");
         }
     }
     break;
@@ -311,7 +311,7 @@ bool
 BallotProtocol::abandonBallot(uint32 n)
 {
     ZoneScoped;
-    CLOG_TRACE(SCP, "BallotProtocol::abandonBallot");
+    CLOG_TRACE(pogcvm, "BallotProtocol::abandonBallot");
     bool res = false;
     auto v = mSlot.getLatestCompositeCandidate();
 
@@ -354,12 +354,12 @@ bool
 BallotProtocol::bumpState(Value const& value, uint32 n)
 {
     ZoneScoped;
-    if (mPhase != SCP_PHASE_PREPARE && mPhase != SCP_PHASE_CONFIRM)
+    if (mPhase != pogcvm_PHASE_PREPARE && mPhase != pogcvm_PHASE_CONFIRM)
     {
         return false;
     }
 
-    SCPBallot newb;
+    pogcvmBallot newb;
 
     newb.counter = n;
 
@@ -374,8 +374,8 @@ BallotProtocol::bumpState(Value const& value, uint32 n)
         newb.value = value;
     }
 
-    CLOG_TRACE(SCP, "BallotProtocol::bumpState i: {} v: {}",
-               mSlot.getSlotIndex(), mSlot.getSCP().ballotToStr(newb));
+    CLOG_TRACE(pogcvm, "BallotProtocol::bumpState i: {} v: {}",
+               mSlot.getSlotIndex(), mSlot.getpogcvm().ballotToStr(newb));
 
     bool updated = updateCurrentValue(newb);
 
@@ -391,10 +391,10 @@ BallotProtocol::bumpState(Value const& value, uint32 n)
 // updates the local state based to the specified ballot
 // (that could be a prepared ballot) enforcing invariants
 bool
-BallotProtocol::updateCurrentValue(SCPBallot const& ballot)
+BallotProtocol::updateCurrentValue(pogcvmBallot const& ballot)
 {
     ZoneScoped;
-    if (mPhase != SCP_PHASE_PREPARE && mPhase != SCP_PHASE_CONFIRM)
+    if (mPhase != pogcvm_PHASE_PREPARE && mPhase != pogcvm_PHASE_CONFIRM)
     {
         return false;
     }
@@ -429,7 +429,7 @@ BallotProtocol::updateCurrentValue(SCPBallot const& ballot)
             // following the protocol (and we end up with a smaller value)
             // not sure what is the best way to deal
             // with this situation
-            CLOG_ERROR(SCP,
+            CLOG_ERROR(pogcvm,
                        "BallotProtocol::updateCurrentValue attempt to bump to "
                        "a smaller value");
             // can't just bump to the value as we may already have
@@ -444,17 +444,17 @@ BallotProtocol::updateCurrentValue(SCPBallot const& ballot)
 }
 
 void
-BallotProtocol::bumpToBallot(SCPBallot const& ballot, bool check)
+BallotProtocol::bumpToBallot(pogcvmBallot const& ballot, bool check)
 {
     ZoneScoped;
     ZoneValue(static_cast<int64_t>(mSlot.getSlotIndex()));
     ZoneValue(static_cast<int64_t>(ballot.counter));
 
-    CLOG_TRACE(SCP, "BallotProtocol::bumpToBallot i: {} b: {}",
-               mSlot.getSlotIndex(), mSlot.getSCP().ballotToStr(ballot));
+    CLOG_TRACE(pogcvm, "BallotProtocol::bumpToBallot i: {} b: {}",
+               mSlot.getSlotIndex(), mSlot.getpogcvm().ballotToStr(ballot));
 
     // `bumpToBallot` should be never called once we committed.
-    dbgAssert(mPhase != SCP_PHASE_EXTERNALIZE);
+    dbgAssert(mPhase != pogcvm_PHASE_EXTERNALIZE);
 
     if (check)
     {
@@ -468,7 +468,7 @@ BallotProtocol::bumpToBallot(SCPBallot const& ballot, bool check)
 
     if (!mCurrentBallot)
     {
-        mSlot.getSCPDriver().startedBallotProtocol(mSlot.getSlotIndex(),
+        mSlot.getpogcvmDriver().startedBallotProtocol(mSlot.getSlotIndex(),
                                                    ballot);
     }
 
@@ -494,11 +494,11 @@ BallotProtocol::bumpToBallot(SCPBallot const& ballot, bool check)
 void
 BallotProtocol::startBallotProtocolTimer()
 {
-    std::chrono::milliseconds timeout = mSlot.getSCPDriver().computeTimeout(
+    std::chrono::milliseconds timeout = mSlot.getpogcvmDriver().computeTimeout(
         mCurrentBallot->getBallot().counter);
 
     std::shared_ptr<Slot> slot = mSlot.shared_from_this();
-    mSlot.getSCPDriver().setupTimer(
+    mSlot.getpogcvmDriver().setupTimer(
         mSlot.getSlotIndex(), Slot::BALLOT_PROTOCOL_TIMER, timeout,
         [slot]() { slot->getBallotProtocol().ballotProtocolTimerExpired(); });
 }
@@ -507,7 +507,7 @@ void
 BallotProtocol::stopBallotProtocolTimer()
 {
     std::shared_ptr<Slot> slot = mSlot.shared_from_this();
-    mSlot.getSCPDriver().setupTimer(mSlot.getSlotIndex(),
+    mSlot.getpogcvmDriver().setupTimer(mSlot.getSlotIndex(),
                                     Slot::BALLOT_PROTOCOL_TIMER,
                                     std::chrono::seconds::zero(), nullptr);
 }
@@ -518,18 +518,18 @@ BallotProtocol::ballotProtocolTimerExpired()
     abandonBallot(0);
 }
 
-SCPStatement
-BallotProtocol::createStatement(SCPStatementType const& type)
+pogcvmStatement
+BallotProtocol::createStatement(pogcvmStatementType const& type)
 {
     ZoneScoped;
-    SCPStatement statement;
+    pogcvmStatement statement;
 
     checkInvariants();
 
     statement.pledges.type(type);
     switch (type)
     {
-    case SCPStatementType::SCP_ST_PREPARE:
+    case pogcvmStatementType::pogcvm_ST_PREPARE:
     {
         auto& p = statement.pledges.prepare();
         p.quorumSetHash = getLocalNode()->getQuorumSetHash();
@@ -555,7 +555,7 @@ BallotProtocol::createStatement(SCPStatementType const& type)
         }
     }
     break;
-    case SCPStatementType::SCP_ST_CONFIRM:
+    case pogcvmStatementType::pogcvm_ST_CONFIRM:
     {
         auto& c = statement.pledges.confirm();
         c.quorumSetHash = getLocalNode()->getQuorumSetHash();
@@ -565,7 +565,7 @@ BallotProtocol::createStatement(SCPStatementType const& type)
         c.nH = mHighBallot->getBallot().counter;
     }
     break;
-    case SCPStatementType::SCP_ST_EXTERNALIZE:
+    case pogcvmStatementType::pogcvm_ST_EXTERNALIZE:
     {
         auto& e = statement.pledges.externalize();
         e.commit = mCommit->getBallot();
@@ -584,38 +584,38 @@ void
 BallotProtocol::emitCurrentStateStatement()
 {
     ZoneScoped;
-    SCPStatementType t;
+    pogcvmStatementType t;
 
     switch (mPhase)
     {
-    case SCP_PHASE_PREPARE:
-        t = SCP_ST_PREPARE;
+    case pogcvm_PHASE_PREPARE:
+        t = pogcvm_ST_PREPARE;
         break;
-    case SCP_PHASE_CONFIRM:
-        t = SCP_ST_CONFIRM;
+    case pogcvm_PHASE_CONFIRM:
+        t = pogcvm_ST_CONFIRM;
         break;
-    case SCP_PHASE_EXTERNALIZE:
-        t = SCP_ST_EXTERNALIZE;
+    case pogcvm_PHASE_EXTERNALIZE:
+        t = pogcvm_ST_EXTERNALIZE;
         break;
     default:
         dbgAbort();
     }
 
-    SCPStatement statement = createStatement(t);
-    SCPEnvelope envelope = mSlot.createEnvelope(statement);
+    pogcvmStatement statement = createStatement(t);
+    pogcvmEnvelope envelope = mSlot.createEnvelope(statement);
 
     bool canEmit = (mCurrentBallot != nullptr);
 
     // if we generate the same envelope, don't process it again
     // this can occur when updating h in PREPARE phase
     // as statements only keep track of h.n (but h.x could be different)
-    auto lastEnv = mLatestEnvelopes.find(mSlot.getSCP().getLocalNodeID());
+    auto lastEnv = mLatestEnvelopes.find(mSlot.getpogcvm().getLocalNodeID());
 
     if (lastEnv == mLatestEnvelopes.end() ||
         !(lastEnv->second->getEnvelope() == envelope))
     {
-        auto envW = mSlot.getSCPDriver().wrapEnvelope(envelope);
-        if (mSlot.processEnvelope(envW, true) == SCP::EnvelopeState::VALID)
+        auto envW = mSlot.getpogcvmDriver().wrapEnvelope(envelope);
+        if (mSlot.processEnvelope(envW, true) == pogcvm::EnvelopeState::VALID)
         {
             if (canEmit && (!mLastEnvelope ||
                             isNewerStatement(mLastEnvelope->getStatement(),
@@ -665,12 +665,12 @@ BallotProtocol::checkInvariants()
 
     switch (mPhase)
     {
-    case SCP_PHASE_PREPARE:
+    case pogcvm_PHASE_PREPARE:
         break;
-    case SCP_PHASE_CONFIRM:
+    case pogcvm_PHASE_CONFIRM:
         dbgAssert(mCommit);
         break;
-    case SCP_PHASE_EXTERNALIZE:
+    case pogcvm_PHASE_EXTERNALIZE:
         dbgAssert(mCommit);
         dbgAssert(mHighBallot);
         break;
@@ -679,15 +679,15 @@ BallotProtocol::checkInvariants()
     }
 }
 
-std::set<SCPBallot>
-BallotProtocol::getPrepareCandidates(SCPStatement const& hint)
+std::set<pogcvmBallot>
+BallotProtocol::getPrepareCandidates(pogcvmStatement const& hint)
 {
     ZoneScoped;
-    std::set<SCPBallot> hintBallots;
+    std::set<pogcvmBallot> hintBallots;
 
     switch (hint.pledges.type())
     {
-    case SCP_ST_PREPARE:
+    case pogcvm_ST_PREPARE:
     {
         auto const& prep = hint.pledges.prepare();
         hintBallots.insert(prep.ballot);
@@ -701,29 +701,29 @@ BallotProtocol::getPrepareCandidates(SCPStatement const& hint)
         }
     }
     break;
-    case SCP_ST_CONFIRM:
+    case pogcvm_ST_CONFIRM:
     {
         auto const& con = hint.pledges.confirm();
-        hintBallots.insert(SCPBallot(con.nPrepared, con.ballot.value));
-        hintBallots.insert(SCPBallot(UINT32_MAX, con.ballot.value));
+        hintBallots.insert(pogcvmBallot(con.nPrepared, con.ballot.value));
+        hintBallots.insert(pogcvmBallot(UINT32_MAX, con.ballot.value));
     }
     break;
-    case SCP_ST_EXTERNALIZE:
+    case pogcvm_ST_EXTERNALIZE:
     {
         auto const& ext = hint.pledges.externalize();
-        hintBallots.insert(SCPBallot(UINT32_MAX, ext.commit.value));
+        hintBallots.insert(pogcvmBallot(UINT32_MAX, ext.commit.value));
     }
     break;
     default:
         abort();
     };
 
-    std::set<SCPBallot> candidates;
+    std::set<pogcvmBallot> candidates;
 
     while (!hintBallots.empty())
     {
         auto last = --hintBallots.end();
-        SCPBallot topVote = *last;
+        pogcvmBallot topVote = *last;
         hintBallots.erase(last);
 
         auto const& val = topVote.value;
@@ -731,10 +731,10 @@ BallotProtocol::getPrepareCandidates(SCPStatement const& hint)
         // find candidates that may have been prepared
         for (auto const& e : mLatestEnvelopes)
         {
-            SCPStatement const& st = e.second->getStatement();
+            pogcvmStatement const& st = e.second->getStatement();
             switch (st.pledges.type())
             {
-            case SCP_ST_PREPARE:
+            case pogcvm_ST_PREPARE:
             {
                 auto const& prep = st.pledges.prepare();
                 if (areBallotsLessAndCompatible(prep.ballot, topVote))
@@ -753,7 +753,7 @@ BallotProtocol::getPrepareCandidates(SCPStatement const& hint)
                 }
             }
             break;
-            case SCP_ST_CONFIRM:
+            case pogcvm_ST_CONFIRM:
             {
                 auto const& con = st.pledges.confirm();
                 if (areBallotsCompatible(topVote, con.ballot))
@@ -761,12 +761,12 @@ BallotProtocol::getPrepareCandidates(SCPStatement const& hint)
                     candidates.insert(topVote);
                     if (con.nPrepared < topVote.counter)
                     {
-                        candidates.insert(SCPBallot(con.nPrepared, val));
+                        candidates.insert(pogcvmBallot(con.nPrepared, val));
                     }
                 }
             }
             break;
-            case SCP_ST_EXTERNALIZE:
+            case pogcvm_ST_EXTERNALIZE:
             {
                 auto const& ext = st.pledges.externalize();
                 if (areBallotsCompatible(topVote, ext.commit))
@@ -785,7 +785,7 @@ BallotProtocol::getPrepareCandidates(SCPStatement const& hint)
 }
 
 bool
-BallotProtocol::updateCurrentIfNeeded(SCPBallot const& h)
+BallotProtocol::updateCurrentIfNeeded(pogcvmBallot const& h)
 {
     bool didWork = false;
     if (!mCurrentBallot || compareBallots(mCurrentBallot->getBallot(), h) < 0)
@@ -797,10 +797,10 @@ BallotProtocol::updateCurrentIfNeeded(SCPBallot const& h)
 }
 
 bool
-BallotProtocol::attemptAcceptPrepared(SCPStatement const& hint)
+BallotProtocol::attemptAcceptPrepared(pogcvmStatement const& hint)
 {
     ZoneScoped;
-    if (mPhase != SCP_PHASE_PREPARE && mPhase != SCP_PHASE_CONFIRM)
+    if (mPhase != pogcvm_PHASE_PREPARE && mPhase != pogcvm_PHASE_CONFIRM)
     {
         return false;
     }
@@ -810,9 +810,9 @@ BallotProtocol::attemptAcceptPrepared(SCPStatement const& hint)
     // see if we can accept any of the candidates, starting with the highest
     for (auto cur = candidates.rbegin(); cur != candidates.rend(); cur++)
     {
-        SCPBallot ballot = *cur;
+        pogcvmBallot ballot = *cur;
 
-        if (mPhase == SCP_PHASE_CONFIRM)
+        if (mPhase == pogcvm_PHASE_CONFIRM)
         {
             // only consider the ballot if it may help us increase
             // p (note: at this point, p ~ c)
@@ -844,24 +844,24 @@ BallotProtocol::attemptAcceptPrepared(SCPStatement const& hint)
 
         bool accepted = federatedAccept(
             // checks if any node is voting for this ballot
-            [&ballot](SCPStatement const& st) {
+            [&ballot](pogcvmStatement const& st) {
                 bool res;
 
                 switch (st.pledges.type())
                 {
-                case SCP_ST_PREPARE:
+                case pogcvm_ST_PREPARE:
                 {
                     auto const& p = st.pledges.prepare();
                     res = areBallotsLessAndCompatible(ballot, p.ballot);
                 }
                 break;
-                case SCP_ST_CONFIRM:
+                case pogcvm_ST_CONFIRM:
                 {
                     auto const& c = st.pledges.confirm();
                     res = areBallotsCompatible(ballot, c.ballot);
                 }
                 break;
-                case SCP_ST_EXTERNALIZE:
+                case pogcvm_ST_EXTERNALIZE:
                 {
                     auto const& e = st.pledges.externalize();
                     res = areBallotsCompatible(ballot, e.commit);
@@ -885,11 +885,11 @@ BallotProtocol::attemptAcceptPrepared(SCPStatement const& hint)
 }
 
 bool
-BallotProtocol::setAcceptPrepared(SCPBallot const& ballot)
+BallotProtocol::setAcceptPrepared(pogcvmBallot const& ballot)
 {
     ZoneScoped;
-    CLOG_TRACE(SCP, "BallotProtocol::setAcceptPrepared i: {} b: {}",
-               mSlot.getSlotIndex(), mSlot.getSCP().ballotToStr(ballot));
+    CLOG_TRACE(pogcvm, "BallotProtocol::setAcceptPrepared i: {} b: {}",
+               mSlot.getSlotIndex(), mSlot.getpogcvm().ballotToStr(ballot));
 
     // update our state
     bool didWork = setPrepared(ballot);
@@ -904,7 +904,7 @@ BallotProtocol::setAcceptPrepared(SCPBallot const& ballot)
              areBallotsLessAndIncompatible(mHighBallot->getBallot(),
                                            mPreparedPrime->getBallot())))
         {
-            dbgAssert(mPhase == SCP_PHASE_PREPARE);
+            dbgAssert(mPhase == pogcvm_PHASE_PREPARE);
             mCommit.reset();
             didWork = true;
         }
@@ -912,7 +912,7 @@ BallotProtocol::setAcceptPrepared(SCPBallot const& ballot)
 
     if (didWork)
     {
-        mSlot.getSCPDriver().acceptedBallotPrepared(mSlot.getSlotIndex(),
+        mSlot.getpogcvmDriver().acceptedBallotPrepared(mSlot.getSlotIndex(),
                                                     ballot);
         emitCurrentStateStatement();
     }
@@ -921,10 +921,10 @@ BallotProtocol::setAcceptPrepared(SCPBallot const& ballot)
 }
 
 bool
-BallotProtocol::attemptConfirmPrepared(SCPStatement const& hint)
+BallotProtocol::attemptConfirmPrepared(pogcvmStatement const& hint)
 {
     ZoneScoped;
-    if (mPhase != SCP_PHASE_PREPARE)
+    if (mPhase != pogcvm_PHASE_PREPARE)
     {
         return false;
     }
@@ -938,12 +938,12 @@ BallotProtocol::attemptConfirmPrepared(SCPStatement const& hint)
     auto candidates = getPrepareCandidates(hint);
 
     // see if we can accept any of the candidates, starting with the highest
-    SCPBallot newH;
+    pogcvmBallot newH;
     bool newHfound = false;
     auto cur = candidates.rbegin();
     for (; cur != candidates.rend(); cur++)
     {
-        SCPBallot ballot = *cur;
+        pogcvmBallot ballot = *cur;
 
         // only consider it if we can potentially raise h
         if (mHighBallot &&
@@ -966,11 +966,11 @@ BallotProtocol::attemptConfirmPrepared(SCPStatement const& hint)
 
     if (newHfound)
     {
-        SCPBallot newC;
+        pogcvmBallot newC;
         // now, look for newC (left as 0 if no update)
         // step (3) from the paper
-        SCPBallot b =
-            mCurrentBallot ? mCurrentBallot->getBallot() : SCPBallot();
+        pogcvmBallot b =
+            mCurrentBallot ? mCurrentBallot->getBallot() : pogcvmBallot();
         if (!mCommit &&
             (!mPrepared ||
              !areBallotsLessAndIncompatible(newH, mPrepared->getBallot())) &&
@@ -980,7 +980,7 @@ BallotProtocol::attemptConfirmPrepared(SCPStatement const& hint)
             // continue where we left off (cur is at newH at this point)
             for (; cur != candidates.rend(); cur++)
             {
-                SCPBallot ballot = *cur;
+                pogcvmBallot ballot = *cur;
                 if (compareBallots(ballot, b) < 0)
                 {
                     break;
@@ -1008,16 +1008,16 @@ BallotProtocol::attemptConfirmPrepared(SCPStatement const& hint)
 }
 
 bool
-BallotProtocol::commitPredicate(SCPBallot const& ballot, Interval const& check,
-                                SCPStatement const& st)
+BallotProtocol::commitPredicate(pogcvmBallot const& ballot, Interval const& check,
+                                pogcvmStatement const& st)
 {
     bool res = false;
     auto const& pl = st.pledges;
     switch (pl.type())
     {
-    case SCP_ST_PREPARE:
+    case pogcvm_ST_PREPARE:
         break;
-    case SCP_ST_CONFIRM:
+    case pogcvm_ST_CONFIRM:
     {
         auto const& c = pl.confirm();
         if (areBallotsCompatible(ballot, c.ballot))
@@ -1026,7 +1026,7 @@ BallotProtocol::commitPredicate(SCPBallot const& ballot, Interval const& check,
         }
     }
     break;
-    case SCP_ST_EXTERNALIZE:
+    case pogcvm_ST_EXTERNALIZE:
     {
         auto const& e = pl.externalize();
         if (areBallotsCompatible(ballot, e.commit))
@@ -1042,16 +1042,16 @@ BallotProtocol::commitPredicate(SCPBallot const& ballot, Interval const& check,
 }
 
 bool
-BallotProtocol::setConfirmPrepared(SCPBallot const& newC, SCPBallot const& newH)
+BallotProtocol::setConfirmPrepared(pogcvmBallot const& newC, pogcvmBallot const& newH)
 {
     ZoneScoped;
-    CLOG_TRACE(SCP, "BallotProtocol::setConfirmPrepared i: {} h: {}",
-               mSlot.getSlotIndex(), mSlot.getSCP().ballotToStr(newH));
+    CLOG_TRACE(pogcvm, "BallotProtocol::setConfirmPrepared i: {} h: {}",
+               mSlot.getSlotIndex(), mSlot.getpogcvm().ballotToStr(newH));
 
     bool didWork = false;
 
     // remember newH's value
-    mValueOverride = mSlot.getSCPDriver().wrapValue(newH.value);
+    mValueOverride = mSlot.getpogcvmDriver().wrapValue(newH.value);
 
     // we don't set c/h if we're not on a compatible ballot
     if (!mCurrentBallot ||
@@ -1072,7 +1072,7 @@ BallotProtocol::setConfirmPrepared(SCPBallot const& newC, SCPBallot const& newH)
 
         if (didWork)
         {
-            mSlot.getSCPDriver().confirmedBallotPrepared(mSlot.getSlotIndex(),
+            mSlot.getpogcvmDriver().confirmedBallotPrepared(mSlot.getSlotIndex(),
                                                          newH);
         }
     }
@@ -1127,7 +1127,7 @@ BallotProtocol::findExtendedInterval(Interval& candidate,
 }
 
 std::set<uint32>
-BallotProtocol::getCommitBoundariesFromStatements(SCPBallot const& ballot)
+BallotProtocol::getCommitBoundariesFromStatements(pogcvmBallot const& ballot)
 {
     std::set<uint32> res;
     for (auto const& env : mLatestEnvelopes)
@@ -1135,7 +1135,7 @@ BallotProtocol::getCommitBoundariesFromStatements(SCPBallot const& ballot)
         auto const& pl = env.second->getStatement().pledges;
         switch (pl.type())
         {
-        case SCP_ST_PREPARE:
+        case pogcvm_ST_PREPARE:
         {
             auto const& p = pl.prepare();
             if (areBallotsCompatible(ballot, p.ballot))
@@ -1148,7 +1148,7 @@ BallotProtocol::getCommitBoundariesFromStatements(SCPBallot const& ballot)
             }
         }
         break;
-        case SCP_ST_CONFIRM:
+        case pogcvm_ST_CONFIRM:
         {
             auto const& c = pl.confirm();
             if (areBallotsCompatible(ballot, c.ballot))
@@ -1158,7 +1158,7 @@ BallotProtocol::getCommitBoundariesFromStatements(SCPBallot const& ballot)
             }
         }
         break;
-        case SCP_ST_EXTERNALIZE:
+        case pogcvm_ST_EXTERNALIZE:
         {
             auto const& e = pl.externalize();
             if (areBallotsCompatible(ballot, e.commit))
@@ -1177,10 +1177,10 @@ BallotProtocol::getCommitBoundariesFromStatements(SCPBallot const& ballot)
 }
 
 bool
-BallotProtocol::attemptAcceptCommit(SCPStatement const& hint)
+BallotProtocol::attemptAcceptCommit(pogcvmStatement const& hint)
 {
     ZoneScoped;
-    if (mPhase != SCP_PHASE_PREPARE && mPhase != SCP_PHASE_CONFIRM)
+    if (mPhase != pogcvm_PHASE_PREPARE && mPhase != pogcvm_PHASE_CONFIRM)
     {
         return false;
     }
@@ -1188,15 +1188,15 @@ BallotProtocol::attemptAcceptCommit(SCPStatement const& hint)
     // extracts value from hint
     // note: ballot.counter is only used for logging purpose as we're looking at
     // possible value to commit
-    SCPBallot ballot;
+    pogcvmBallot ballot;
     switch (hint.pledges.type())
     {
-    case SCPStatementType::SCP_ST_PREPARE:
+    case pogcvmStatementType::pogcvm_ST_PREPARE:
     {
         auto const& prep = hint.pledges.prepare();
         if (prep.nC != 0)
         {
-            ballot = SCPBallot(prep.nH, prep.ballot.value);
+            ballot = pogcvmBallot(prep.nH, prep.ballot.value);
         }
         else
         {
@@ -1204,23 +1204,23 @@ BallotProtocol::attemptAcceptCommit(SCPStatement const& hint)
         }
     }
     break;
-    case SCPStatementType::SCP_ST_CONFIRM:
+    case pogcvmStatementType::pogcvm_ST_CONFIRM:
     {
         auto const& con = hint.pledges.confirm();
-        ballot = SCPBallot(con.nH, con.ballot.value);
+        ballot = pogcvmBallot(con.nH, con.ballot.value);
     }
     break;
-    case SCPStatementType::SCP_ST_EXTERNALIZE:
+    case pogcvmStatementType::pogcvm_ST_EXTERNALIZE:
     {
         auto const& ext = hint.pledges.externalize();
-        ballot = SCPBallot(ext.nH, ext.commit.value);
+        ballot = pogcvmBallot(ext.nH, ext.commit.value);
         break;
     }
     default:
         abort();
     };
 
-    if (mPhase == SCP_PHASE_CONFIRM)
+    if (mPhase == pogcvm_PHASE_CONFIRM)
     {
         if (!areBallotsCompatible(ballot, mHighBallot->getBallot()))
         {
@@ -1230,12 +1230,12 @@ BallotProtocol::attemptAcceptCommit(SCPStatement const& hint)
 
     auto pred = [&ballot, this](Interval const& cur) -> bool {
         return federatedAccept(
-            [&](SCPStatement const& st) -> bool {
+            [&](pogcvmStatement const& st) -> bool {
                 bool res = false;
                 auto const& pl = st.pledges;
                 switch (pl.type())
                 {
-                case SCP_ST_PREPARE:
+                case pogcvm_ST_PREPARE:
                 {
                     auto const& p = pl.prepare();
                     if (areBallotsCompatible(ballot, p.ballot))
@@ -1247,7 +1247,7 @@ BallotProtocol::attemptAcceptCommit(SCPStatement const& hint)
                     }
                 }
                 break;
-                case SCP_ST_CONFIRM:
+                case pogcvm_ST_CONFIRM:
                 {
                     auto const& c = pl.confirm();
                     if (areBallotsCompatible(ballot, c.ballot))
@@ -1256,7 +1256,7 @@ BallotProtocol::attemptAcceptCommit(SCPStatement const& hint)
                     }
                 }
                 break;
-                case SCP_ST_EXTERNALIZE:
+                case pogcvm_ST_EXTERNALIZE:
                 {
                     auto const& e = pl.externalize();
                     if (areBallotsCompatible(ballot, e.commit))
@@ -1290,11 +1290,11 @@ BallotProtocol::attemptAcceptCommit(SCPStatement const& hint)
 
     if (candidate.first != 0)
     {
-        if (mPhase != SCP_PHASE_CONFIRM ||
+        if (mPhase != pogcvm_PHASE_CONFIRM ||
             candidate.second > mHighBallot->getBallot().counter)
         {
-            SCPBallot c = SCPBallot(candidate.first, ballot.value);
-            SCPBallot h = SCPBallot(candidate.second, ballot.value);
+            pogcvmBallot c = pogcvmBallot(candidate.first, ballot.value);
+            pogcvmBallot h = pogcvmBallot(candidate.second, ballot.value);
             res = setAcceptCommit(c, h);
         }
     }
@@ -1303,17 +1303,17 @@ BallotProtocol::attemptAcceptCommit(SCPStatement const& hint)
 }
 
 bool
-BallotProtocol::setAcceptCommit(SCPBallot const& c, SCPBallot const& h)
+BallotProtocol::setAcceptCommit(pogcvmBallot const& c, pogcvmBallot const& h)
 {
     ZoneScoped;
-    CLOG_TRACE(SCP, "BallotProtocol::setAcceptCommit i: {} new c: {} new h: {}",
-               mSlot.getSlotIndex(), mSlot.getSCP().ballotToStr(c),
-               mSlot.getSCP().ballotToStr(h));
+    CLOG_TRACE(pogcvm, "BallotProtocol::setAcceptCommit i: {} new c: {} new h: {}",
+               mSlot.getSlotIndex(), mSlot.getpogcvm().ballotToStr(c),
+               mSlot.getpogcvm().ballotToStr(h));
 
     bool didWork = false;
 
     // remember h's value
-    mValueOverride = mSlot.getSCPDriver().wrapValue(h.value);
+    mValueOverride = mSlot.getpogcvmDriver().wrapValue(h.value);
 
     if (!mHighBallot || !mCommit ||
         compareBallots(mHighBallot->getBallot(), h) != 0 ||
@@ -1325,9 +1325,9 @@ BallotProtocol::setAcceptCommit(SCPBallot const& c, SCPBallot const& h)
         didWork = true;
     }
 
-    if (mPhase == SCP_PHASE_PREPARE)
+    if (mPhase == pogcvm_PHASE_PREPARE)
     {
-        mPhase = SCP_PHASE_CONFIRM;
+        mPhase = pogcvm_PHASE_CONFIRM;
         if (mCurrentBallot &&
             !areBallotsLessAndCompatible(h, mCurrentBallot->getBallot()))
         {
@@ -1342,7 +1342,7 @@ BallotProtocol::setAcceptCommit(SCPBallot const& c, SCPBallot const& h)
     {
         updateCurrentIfNeeded(mHighBallot->getBallot());
 
-        mSlot.getSCPDriver().acceptedCommit(mSlot.getSlotIndex(), h);
+        mSlot.getpogcvmDriver().acceptedCommit(mSlot.getSlotIndex(), h);
         emitCurrentStateStatement();
     }
 
@@ -1350,18 +1350,18 @@ BallotProtocol::setAcceptCommit(SCPBallot const& c, SCPBallot const& h)
 }
 
 static uint32
-statementBallotCounter(SCPStatement const& st)
+statementBallotCounter(pogcvmStatement const& st)
 {
     switch (st.pledges.type())
     {
-    case SCP_ST_PREPARE:
+    case pogcvm_ST_PREPARE:
         return st.pledges.prepare().ballot.counter;
-    case SCP_ST_CONFIRM:
+    case pogcvm_ST_CONFIRM:
         return st.pledges.confirm().ballot.counter;
-    case SCP_ST_EXTERNALIZE:
+    case pogcvm_ST_EXTERNALIZE:
         return UINT32_MAX;
     default:
-        // Should never be called with SCP_ST_NOMINATE.
+        // Should never be called with pogcvm_ST_NOMINATE.
         abort();
     }
 }
@@ -1369,11 +1369,11 @@ statementBallotCounter(SCPStatement const& st)
 static bool
 hasVBlockingSubsetStrictlyAheadOf(
     std::shared_ptr<LocalNode> localNode,
-    std::map<NodeID, SCPEnvelopeWrapperPtr> const& map, uint32_t n)
+    std::map<NodeID, pogcvmEnvelopeWrapperPtr> const& map, uint32_t n)
 {
     return LocalNode::isVBlocking(
         localNode->getQuorumSet(), map,
-        [&](SCPStatement const& st) { return statementBallotCounter(st) > n; });
+        [&](pogcvmStatement const& st) { return statementBallotCounter(st) > n; });
 }
 
 // Step 9 from the paper (Feb 2016):
@@ -1389,15 +1389,15 @@ hasVBlockingSubsetStrictlyAheadOf(
 //   cancels any pending timer, increases ballot.counter to the lowest
 //   value such that this is no longer the case, and if appropriate
 //   according to the rules above arms a new timer. Note that the blocking
-//   threshold may include ballots from SCPCommit messages as well as
-//   SCPExternalize messages, which implicitly have an infinite ballot
+//   threshold may include ballots from pogcvmCommit messages as well as
+//   pogcvmExternalize messages, which implicitly have an infinite ballot
 //   counter.
 
 bool
 BallotProtocol::attemptBump()
 {
     ZoneScoped;
-    if (mPhase == SCP_PHASE_PREPARE || mPhase == SCP_PHASE_CONFIRM)
+    if (mPhase == pogcvm_PHASE_PREPARE || mPhase == pogcvm_PHASE_CONFIRM)
     {
 
         // First check to see if this condition applies at all. If there
@@ -1439,10 +1439,10 @@ BallotProtocol::attemptBump()
 }
 
 bool
-BallotProtocol::attemptConfirmCommit(SCPStatement const& hint)
+BallotProtocol::attemptConfirmCommit(pogcvmStatement const& hint)
 {
     ZoneScoped;
-    if (mPhase != SCP_PHASE_CONFIRM)
+    if (mPhase != pogcvm_PHASE_CONFIRM)
     {
         return false;
     }
@@ -1454,24 +1454,24 @@ BallotProtocol::attemptConfirmCommit(SCPStatement const& hint)
 
     // extracts value from hint
     // note: ballot.counter is only used for logging purpose
-    SCPBallot ballot;
+    pogcvmBallot ballot;
     switch (hint.pledges.type())
     {
-    case SCPStatementType::SCP_ST_PREPARE:
+    case pogcvmStatementType::pogcvm_ST_PREPARE:
     {
         return false;
     }
     break;
-    case SCPStatementType::SCP_ST_CONFIRM:
+    case pogcvmStatementType::pogcvm_ST_CONFIRM:
     {
         auto const& con = hint.pledges.confirm();
-        ballot = SCPBallot(con.nH, con.ballot.value);
+        ballot = pogcvmBallot(con.nH, con.ballot.value);
     }
     break;
-    case SCPStatementType::SCP_ST_EXTERNALIZE:
+    case pogcvmStatementType::pogcvm_ST_EXTERNALIZE:
     {
         auto const& ext = hint.pledges.externalize();
-        ballot = SCPBallot(ext.nH, ext.commit.value);
+        ballot = pogcvmBallot(ext.nH, ext.commit.value);
         break;
     }
     default:
@@ -1496,47 +1496,47 @@ BallotProtocol::attemptConfirmCommit(SCPStatement const& hint)
     bool res = candidate.first != 0;
     if (res)
     {
-        SCPBallot c = SCPBallot(candidate.first, ballot.value);
-        SCPBallot h = SCPBallot(candidate.second, ballot.value);
+        pogcvmBallot c = pogcvmBallot(candidate.first, ballot.value);
+        pogcvmBallot h = pogcvmBallot(candidate.second, ballot.value);
         return setConfirmCommit(c, h);
     }
     return res;
 }
 
 bool
-BallotProtocol::setConfirmCommit(SCPBallot const& c, SCPBallot const& h)
+BallotProtocol::setConfirmCommit(pogcvmBallot const& c, pogcvmBallot const& h)
 {
     ZoneScoped;
-    CLOG_TRACE(SCP,
+    CLOG_TRACE(pogcvm,
                "BallotProtocol::setConfirmCommit i: {} new c: {} new h: {}",
-               mSlot.getSlotIndex(), mSlot.getSCP().ballotToStr(c),
-               mSlot.getSCP().ballotToStr(h));
+               mSlot.getSlotIndex(), mSlot.getpogcvm().ballotToStr(c),
+               mSlot.getpogcvm().ballotToStr(h));
 
     mCommit = makeBallot(c);
     mHighBallot = makeBallot(h);
     updateCurrentIfNeeded(mHighBallot->getBallot());
 
-    mPhase = SCP_PHASE_EXTERNALIZE;
+    mPhase = pogcvm_PHASE_EXTERNALIZE;
 
     emitCurrentStateStatement();
 
     mSlot.stopNomination();
 
-    mSlot.getSCPDriver().valueExternalized(mSlot.getSlotIndex(),
+    mSlot.getpogcvmDriver().valueExternalized(mSlot.getSlotIndex(),
                                            mCommit->getBallot().value);
 
     return true;
 }
 
 bool
-BallotProtocol::hasPreparedBallot(SCPBallot const& ballot,
-                                  SCPStatement const& st)
+BallotProtocol::hasPreparedBallot(pogcvmBallot const& ballot,
+                                  pogcvmStatement const& st)
 {
     bool res;
 
     switch (st.pledges.type())
     {
-    case SCP_ST_PREPARE:
+    case pogcvm_ST_PREPARE:
     {
         auto const& p = st.pledges.prepare();
         res =
@@ -1545,14 +1545,14 @@ BallotProtocol::hasPreparedBallot(SCPBallot const& ballot,
              areBallotsLessAndCompatible(ballot, *p.preparedPrime));
     }
     break;
-    case SCP_ST_CONFIRM:
+    case pogcvm_ST_CONFIRM:
     {
         auto const& c = st.pledges.confirm();
-        SCPBallot prepared(c.nPrepared, c.ballot.value);
+        pogcvmBallot prepared(c.nPrepared, c.ballot.value);
         res = areBallotsLessAndCompatible(ballot, prepared);
     }
     break;
-    case SCP_ST_EXTERNALIZE:
+    case pogcvm_ST_EXTERNALIZE:
     {
         auto const& e = st.pledges.externalize();
         res = areBallotsCompatible(ballot, e.commit);
@@ -1567,18 +1567,18 @@ BallotProtocol::hasPreparedBallot(SCPBallot const& ballot,
 }
 
 Hash
-BallotProtocol::getCompanionQuorumSetHashFromStatement(SCPStatement const& st)
+BallotProtocol::getCompanionQuorumSetHashFromStatement(pogcvmStatement const& st)
 {
     Hash h;
     switch (st.pledges.type())
     {
-    case SCP_ST_PREPARE:
+    case pogcvm_ST_PREPARE:
         h = st.pledges.prepare().quorumSetHash;
         break;
-    case SCP_ST_CONFIRM:
+    case pogcvm_ST_CONFIRM:
         h = st.pledges.confirm().quorumSetHash;
         break;
-    case SCP_ST_EXTERNALIZE:
+    case pogcvm_ST_EXTERNALIZE:
         h = st.pledges.externalize().commitQuorumSetHash;
         break;
     default:
@@ -1587,22 +1587,22 @@ BallotProtocol::getCompanionQuorumSetHashFromStatement(SCPStatement const& st)
     return h;
 }
 
-SCPBallot
-BallotProtocol::getWorkingBallot(SCPStatement const& st)
+pogcvmBallot
+BallotProtocol::getWorkingBallot(pogcvmStatement const& st)
 {
-    SCPBallot res;
+    pogcvmBallot res;
     switch (st.pledges.type())
     {
-    case SCP_ST_PREPARE:
+    case pogcvm_ST_PREPARE:
         res = st.pledges.prepare().ballot;
         break;
-    case SCP_ST_CONFIRM:
+    case pogcvm_ST_CONFIRM:
     {
         auto const& con = st.pledges.confirm();
-        res = SCPBallot(con.nCommit, con.ballot.value);
+        res = pogcvmBallot(con.nCommit, con.ballot.value);
     }
     break;
-    case SCP_ST_EXTERNALIZE:
+    case pogcvm_ST_EXTERNALIZE:
         res = st.pledges.externalize().commit;
         break;
     default:
@@ -1612,7 +1612,7 @@ BallotProtocol::getWorkingBallot(SCPStatement const& st)
 }
 
 bool
-BallotProtocol::setPrepared(SCPBallot const& ballot)
+BallotProtocol::setPrepared(pogcvmBallot const& ballot)
 {
     bool didWork = false;
 
@@ -1625,7 +1625,7 @@ BallotProtocol::setPrepared(SCPBallot const& ballot)
             // as we're replacing p, we see if we should also replace p'
             if (!areBallotsCompatible(mPrepared->getBallot(), ballot))
             {
-                mPreparedPrime = std::make_unique<SCPBallotWrapper>(*mPrepared);
+                mPreparedPrime = std::make_unique<pogcvmBallotWrapper>(*mPrepared);
             }
             mPrepared = makeBallot(ballot);
             didWork = true;
@@ -1657,8 +1657,8 @@ BallotProtocol::setPrepared(SCPBallot const& ballot)
 }
 
 int
-BallotProtocol::compareBallots(std::unique_ptr<SCPBallot> const& b1,
-                               std::unique_ptr<SCPBallot> const& b2)
+BallotProtocol::compareBallots(std::unique_ptr<pogcvmBallot> const& b1,
+                               std::unique_ptr<pogcvmBallot> const& b2)
 {
     int res;
     if (b1 && b2)
@@ -1681,7 +1681,7 @@ BallotProtocol::compareBallots(std::unique_ptr<SCPBallot> const& b1,
 }
 
 int
-BallotProtocol::compareBallots(SCPBallot const& b1, SCPBallot const& b2)
+BallotProtocol::compareBallots(pogcvmBallot const& b1, pogcvmBallot const& b2)
 {
     if (b1.counter < b2.counter)
     {
@@ -1707,27 +1707,27 @@ BallotProtocol::compareBallots(SCPBallot const& b1, SCPBallot const& b2)
 }
 
 bool
-BallotProtocol::areBallotsCompatible(SCPBallot const& b1, SCPBallot const& b2)
+BallotProtocol::areBallotsCompatible(pogcvmBallot const& b1, pogcvmBallot const& b2)
 {
     return b1.value == b2.value;
 }
 
 bool
-BallotProtocol::areBallotsLessAndIncompatible(SCPBallot const& b1,
-                                              SCPBallot const& b2)
+BallotProtocol::areBallotsLessAndIncompatible(pogcvmBallot const& b1,
+                                              pogcvmBallot const& b2)
 {
     return (compareBallots(b1, b2) <= 0) && !areBallotsCompatible(b1, b2);
 }
 
 bool
-BallotProtocol::areBallotsLessAndCompatible(SCPBallot const& b1,
-                                            SCPBallot const& b2)
+BallotProtocol::areBallotsLessAndCompatible(pogcvmBallot const& b1,
+                                            pogcvmBallot const& b2)
 {
     return (compareBallots(b1, b2) <= 0) && areBallotsCompatible(b1, b2);
 }
 
 void
-BallotProtocol::setStateFromEnvelope(SCPEnvelopeWrapperPtr e)
+BallotProtocol::setStateFromEnvelope(pogcvmEnvelopeWrapperPtr e)
 {
     ZoneScoped;
     if (mCurrentBallot)
@@ -1745,7 +1745,7 @@ BallotProtocol::setStateFromEnvelope(SCPEnvelopeWrapperPtr e)
 
     switch (pl.type())
     {
-    case SCPStatementType::SCP_ST_PREPARE:
+    case pogcvmStatementType::pogcvm_ST_PREPARE:
     {
         auto const& prep = pl.prepare();
         auto const& b = prep.ballot;
@@ -1766,10 +1766,10 @@ BallotProtocol::setStateFromEnvelope(SCPEnvelopeWrapperPtr e)
         {
             mCommit = makeBallot(prep.nC, b.value);
         }
-        mPhase = SCP_PHASE_PREPARE;
+        mPhase = pogcvm_PHASE_PREPARE;
     }
     break;
-    case SCPStatementType::SCP_ST_CONFIRM:
+    case pogcvmStatementType::pogcvm_ST_CONFIRM:
     {
         auto const& c = pl.confirm();
         auto const& v = c.ballot.value;
@@ -1777,18 +1777,18 @@ BallotProtocol::setStateFromEnvelope(SCPEnvelopeWrapperPtr e)
         mPrepared = makeBallot(c.nPrepared, v);
         mHighBallot = makeBallot(c.nH, v);
         mCommit = makeBallot(c.nCommit, v);
-        mPhase = SCP_PHASE_CONFIRM;
+        mPhase = pogcvm_PHASE_CONFIRM;
     }
     break;
-    case SCPStatementType::SCP_ST_EXTERNALIZE:
+    case pogcvmStatementType::pogcvm_ST_EXTERNALIZE:
     {
         auto const& ext = pl.externalize();
         auto const& v = ext.commit.value;
-        bumpToBallot(SCPBallot(UINT32_MAX, v), true);
+        bumpToBallot(pogcvmBallot(UINT32_MAX, v), true);
         mPrepared = makeBallot(UINT32_MAX, v);
         mHighBallot = makeBallot(ext.nH, v);
         mCommit = makeBallot(ext.commit);
-        mPhase = SCP_PHASE_EXTERNALIZE;
+        mPhase = pogcvm_PHASE_EXTERNALIZE;
     }
     break;
     default:
@@ -1798,12 +1798,12 @@ BallotProtocol::setStateFromEnvelope(SCPEnvelopeWrapperPtr e)
 
 bool
 BallotProtocol::processCurrentState(
-    std::function<bool(SCPEnvelope const&)> const& f, bool forceSelf) const
+    std::function<bool(pogcvmEnvelope const&)> const& f, bool forceSelf) const
 {
     for (auto const& n : mLatestEnvelopes)
     {
         // only return messages for self if the slot is fully validated
-        if (forceSelf || !(n.first == mSlot.getSCP().getLocalNodeID()) ||
+        if (forceSelf || !(n.first == mSlot.getpogcvm().getLocalNodeID()) ||
             mSlot.isFullyValidated())
         {
             if (!f(n.second->getEnvelope()))
@@ -1815,7 +1815,7 @@ BallotProtocol::processCurrentState(
     return true;
 }
 
-SCPEnvelope const*
+pogcvmEnvelope const*
 BallotProtocol::getLatestMessage(NodeID const& id) const
 {
     auto it = mLatestEnvelopes.find(id);
@@ -1826,16 +1826,16 @@ BallotProtocol::getLatestMessage(NodeID const& id) const
     return nullptr;
 }
 
-std::vector<SCPEnvelope>
+std::vector<pogcvmEnvelope>
 BallotProtocol::getExternalizingState() const
 {
-    std::vector<SCPEnvelope> res;
-    if (mPhase == SCP_PHASE_EXTERNALIZE)
+    std::vector<pogcvmEnvelope> res;
+    if (mPhase == pogcvm_PHASE_EXTERNALIZE)
     {
         res.reserve(mLatestEnvelopes.size());
         for (auto const& n : mLatestEnvelopes)
         {
-            if (!(n.first == mSlot.getSCP().getLocalNodeID()))
+            if (!(n.first == mSlot.getpogcvm().getLocalNodeID()))
             {
                 // good approximation: statements with the value that
                 // externalized
@@ -1858,11 +1858,11 @@ BallotProtocol::getExternalizingState() const
 }
 
 void
-BallotProtocol::advanceSlot(SCPStatement const& hint)
+BallotProtocol::advanceSlot(pogcvmStatement const& hint)
 {
     ZoneScoped;
     mCurrentMessageLevel++;
-    CLOG_TRACE(SCP, "BallotProtocol::advanceSlot {} {}", mCurrentMessageLevel,
+    CLOG_TRACE(pogcvm, "BallotProtocol::advanceSlot {} {}", mCurrentMessageLevel,
                getLocalState());
 
     if (mCurrentMessageLevel >= MAX_ADVANCE_SLOT_RECURSION)
@@ -1902,7 +1902,7 @@ BallotProtocol::advanceSlot(SCPStatement const& hint)
         checkHeardFromQuorum();
     }
 
-    CLOG_TRACE(SCP, "BallotProtocol::advanceSlot {} - exiting {}",
+    CLOG_TRACE(pogcvm, "BallotProtocol::advanceSlot {} - exiting {}",
                mCurrentMessageLevel, getLocalState());
 
     --mCurrentMessageLevel;
@@ -1914,13 +1914,13 @@ BallotProtocol::advanceSlot(SCPStatement const& hint)
 }
 
 std::set<Value>
-BallotProtocol::getStatementValues(SCPStatement const& st)
+BallotProtocol::getStatementValues(pogcvmStatement const& st)
 {
     std::set<Value> values;
 
     switch (st.pledges.type())
     {
-    case SCPStatementType::SCP_ST_PREPARE:
+    case pogcvmStatementType::pogcvm_ST_PREPARE:
     {
         auto const& prep = st.pledges.prepare();
         auto const& b = prep.ballot;
@@ -1938,10 +1938,10 @@ BallotProtocol::getStatementValues(SCPStatement const& st)
         }
     }
     break;
-    case SCPStatementType::SCP_ST_CONFIRM:
+    case pogcvmStatementType::pogcvm_ST_CONFIRM:
         values.insert(st.pledges.confirm().ballot.value);
         break;
-    case SCPStatementType::SCP_ST_EXTERNALIZE:
+    case pogcvmStatementType::pogcvm_ST_EXTERNALIZE:
         values.insert(st.pledges.externalize().commit.value);
         break;
     default:
@@ -1950,8 +1950,8 @@ BallotProtocol::getStatementValues(SCPStatement const& st)
     return values;
 }
 
-SCPDriver::ValidationLevel
-BallotProtocol::validateValues(SCPStatement const& st)
+pogcvmDriver::ValidationLevel
+BallotProtocol::validateValues(pogcvmStatement const& st)
 {
     ZoneScoped;
     std::set<Value> values;
@@ -1961,15 +1961,15 @@ BallotProtocol::validateValues(SCPStatement const& st)
     if (values.empty())
     {
         // This shouldn't happen
-        return SCPDriver::kInvalidValue;
+        return pogcvmDriver::kInvalidValue;
     }
 
-    SCPDriver::ValidationLevel res = std::accumulate(
-        values.begin(), values.end(), SCPDriver::kFullyValidatedValue,
-        [&](SCPDriver::ValidationLevel lv, POGchain::Value const& v) {
-            if (lv > SCPDriver::kInvalidValue)
+    pogcvmDriver::ValidationLevel res = std::accumulate(
+        values.begin(), values.end(), pogcvmDriver::kFullyValidatedValue,
+        [&](pogcvmDriver::ValidationLevel lv, POGchain::Value const& v) {
+            if (lv > pogcvmDriver::kInvalidValue)
             {
-                auto tr = mSlot.getSCPDriver().validateValue(
+                auto tr = mSlot.getpogcvmDriver().validateValue(
                     mSlot.getSlotIndex(), v, false);
                 lv = std::min(tr, lv);
             }
@@ -1989,12 +1989,12 @@ BallotProtocol::sendLatestEnvelope()
         if (!mLastEnvelopeEmit || mLastEnvelope != mLastEnvelopeEmit)
         {
             mLastEnvelopeEmit = mLastEnvelope;
-            mSlot.getSCPDriver().emitEnvelope(mLastEnvelopeEmit->getEnvelope());
+            mSlot.getpogcvmDriver().emitEnvelope(mLastEnvelopeEmit->getEnvelope());
         }
     }
 }
 
-std::array<const char*, BallotProtocol::SCP_PHASE_NUM>
+std::array<const char*, BallotProtocol::pogcvm_PHASE_NUM>
     BallotProtocol::phaseNames = std::array{"PREPARE", "FINISH", "EXTERNALIZE"};
 
 Json::Value
@@ -2016,7 +2016,7 @@ BallotProtocol::getJsonQuorumInfo(NodeID const& id, bool summary, bool fullKeys)
     auto& phase = ret["phase"];
 
     // find the state of the node `id`
-    SCPBallot b;
+    pogcvmBallot b;
     Hash qSetHash;
 
     auto stateit = mLatestEnvelopes.find(id);
@@ -2034,15 +2034,15 @@ BallotProtocol::getJsonQuorumInfo(NodeID const& id, bool summary, bool fullKeys)
 
         switch (st.pledges.type())
         {
-        case SCPStatementType::SCP_ST_PREPARE:
+        case pogcvmStatementType::pogcvm_ST_PREPARE:
             phase = "PREPARE";
             b = st.pledges.prepare().ballot;
             break;
-        case SCPStatementType::SCP_ST_CONFIRM:
+        case pogcvmStatementType::pogcvm_ST_CONFIRM:
             phase = "CONFIRM";
             b = st.pledges.confirm().ballot;
             break;
-        case SCPStatementType::SCP_ST_EXTERNALIZE:
+        case pogcvmStatementType::pogcvm_ST_EXTERNALIZE:
             phase = "EXTERNALIZE";
             b = st.pledges.externalize().commit;
             break;
@@ -2050,7 +2050,7 @@ BallotProtocol::getJsonQuorumInfo(NodeID const& id, bool summary, bool fullKeys)
             dbgAbort();
         }
         // use the companion set here even for externalize to capture
-        // the view of the quorum set during consensus
+        // the view of the quorum set during validation
         qSetHash = mSlot.getCompanionQuorumSetHashFromStatement(st);
     }
 
@@ -2061,7 +2061,7 @@ BallotProtocol::getJsonQuorumInfo(NodeID const& id, bool summary, bool fullKeys)
     int n_missing = 0, n_disagree = 0, n_delayed = 0;
 
     int agree = 0;
-    auto qSet = mSlot.getSCPDriver().getQSet(qSetHash);
+    auto qSet = mSlot.getpogcvmDriver().getQSet(qSetHash);
     if (!qSet)
     {
         phase = "expired";
@@ -2073,7 +2073,7 @@ BallotProtocol::getJsonQuorumInfo(NodeID const& id, bool summary, bool fullKeys)
         {
             if (!summary)
             {
-                missing.append(mSlot.getSCPDriver().toStrKey(n, fullKeys));
+                missing.append(mSlot.getpogcvmDriver().toStrKey(n, fullKeys));
             }
             n_missing++;
         }
@@ -2084,14 +2084,14 @@ BallotProtocol::getJsonQuorumInfo(NodeID const& id, bool summary, bool fullKeys)
             {
                 agree++;
                 auto t = st.pledges.type();
-                if (!(t == SCPStatementType::SCP_ST_EXTERNALIZE ||
-                      (t == SCPStatementType::SCP_ST_CONFIRM &&
+                if (!(t == pogcvmStatementType::pogcvm_ST_EXTERNALIZE ||
+                      (t == pogcvmStatementType::pogcvm_ST_CONFIRM &&
                        st.pledges.confirm().ballot.counter == UINT32_MAX)))
                 {
                     if (!summary)
                     {
                         delayed.append(
-                            mSlot.getSCPDriver().toStrKey(n, fullKeys));
+                            mSlot.getpogcvmDriver().toStrKey(n, fullKeys));
                     }
                     n_delayed++;
                 }
@@ -2100,7 +2100,7 @@ BallotProtocol::getJsonQuorumInfo(NodeID const& id, bool summary, bool fullKeys)
             {
                 if (!summary)
                 {
-                    disagree.append(mSlot.getSCPDriver().toStrKey(n, fullKeys));
+                    disagree.append(mSlot.getpogcvmDriver().toStrKey(n, fullKeys));
                 }
                 n_disagree++;
             }
@@ -2116,7 +2116,7 @@ BallotProtocol::getJsonQuorumInfo(NodeID const& id, bool summary, bool fullKeys)
 
     auto f = LocalNode::findClosestVBlocking(
         *qSet, mLatestEnvelopes,
-        [&](SCPStatement const& st) {
+        [&](pogcvmStatement const& st) {
             return areBallotsCompatible(getWorkingBallot(st), b);
         },
         &id);
@@ -2127,7 +2127,7 @@ BallotProtocol::getJsonQuorumInfo(NodeID const& id, bool summary, bool fullKeys)
         auto& f_ex = ret["fail_with"];
         for (auto const& n : f)
         {
-            f_ex.append(mSlot.getSCPDriver().toStrKey(n, fullKeys));
+            f_ex.append(mSlot.getpogcvmDriver().toStrKey(n, fullKeys));
         }
         ret["value"] = getLocalNode()->toJson(*qSet, fullKeys);
     }
@@ -2156,7 +2156,7 @@ BallotProtocol::getLocalState() const
 std::shared_ptr<LocalNode>
 BallotProtocol::getLocalNode()
 {
-    return mSlot.getSCP().getLocalNode();
+    return mSlot.getpogcvm().getLocalNode();
 }
 
 bool
@@ -2189,9 +2189,9 @@ BallotProtocol::checkHeardFromQuorum()
         if (LocalNode::isQuorum(
                 getLocalNode()->getQuorumSet(), mLatestEnvelopes,
                 std::bind(&Slot::getQuorumSetFromStatement, &mSlot, _1),
-                [&](SCPStatement const& st) {
+                [&](pogcvmStatement const& st) {
                     bool res;
-                    if (st.pledges.type() == SCP_ST_PREPARE)
+                    if (st.pledges.type() == pogcvm_ST_PREPARE)
                     {
                         res = mCurrentBallot->getBallot().counter <=
                               st.pledges.prepare().ballot.counter;
@@ -2208,14 +2208,14 @@ BallotProtocol::checkHeardFromQuorum()
             if (!oldHQ)
             {
                 // if we transition from not heard -> heard, we start the timer
-                mSlot.getSCPDriver().ballotDidHearFromQuorum(
+                mSlot.getpogcvmDriver().ballotDidHearFromQuorum(
                     mSlot.getSlotIndex(), mCurrentBallot->getBallot());
-                if (mPhase != SCP_PHASE_EXTERNALIZE)
+                if (mPhase != pogcvm_PHASE_EXTERNALIZE)
                 {
                     startBallotProtocolTimer();
                 }
             }
-            if (mPhase == SCP_PHASE_EXTERNALIZE)
+            if (mPhase == pogcvm_PHASE_EXTERNALIZE)
             {
                 stopBallotProtocolTimer();
             }
@@ -2228,28 +2228,28 @@ BallotProtocol::checkHeardFromQuorum()
     }
 }
 
-BallotProtocol::SCPBallotWrapperUPtr
-BallotProtocol::makeBallot(SCPBallot const& b) const
+BallotProtocol::pogcvmBallotWrapperUPtr
+BallotProtocol::makeBallot(pogcvmBallot const& b) const
 {
-    auto res = std::make_unique<SCPBallotWrapper>(
-        b.counter, mSlot.getSCPDriver().wrapValue(b.value));
+    auto res = std::make_unique<pogcvmBallotWrapper>(
+        b.counter, mSlot.getpogcvmDriver().wrapValue(b.value));
     return res;
 }
 
-BallotProtocol::SCPBallotWrapperUPtr
+BallotProtocol::pogcvmBallotWrapperUPtr
 BallotProtocol::makeBallot(uint32 c, Value const& v) const
 {
-    return makeBallot(SCPBallot(c, v));
+    return makeBallot(pogcvmBallot(c, v));
 }
 
 std::string
 BallotProtocol::ballotToStr(
-    BallotProtocol::SCPBallotWrapperUPtr const& ballot) const
+    BallotProtocol::pogcvmBallotWrapperUPtr const& ballot) const
 {
     std::string res;
     if (ballot)
     {
-        res = mSlot.getSCP().ballotToStr(ballot->getBallot());
+        res = mSlot.getpogcvm().ballotToStr(ballot->getBallot());
     }
     else
     {

@@ -7,7 +7,7 @@
 #include "lib/catch.hpp"
 #include "lib/util/stdrandom.h"
 #include "main/Config.h"
-#include "scp/QuorumSetUtils.h"
+#include "pogcvm/QuorumSetUtils.h"
 #include "test/test.h"
 #include "util/Math.h"
 #include <fmt/format.h>

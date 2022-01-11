@@ -6,7 +6,7 @@
 #include "crypto/SecretKey.h"
 #include "lib/catch.hpp"
 #include "main/Config.h"
-#include "scp/QuorumSetUtils.h"
+#include "pogcvm/QuorumSetUtils.h"
 #include "simulation/LoadGenerator.h"
 #include "simulation/Topologies.h"
 #include "test/test.h"

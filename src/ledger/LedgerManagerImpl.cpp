@@ -69,7 +69,7 @@ The ledger module:
 
 
 catching up to network:
-    1) Wait for SCP to tell us what the network is on now
+    1) Wait for pogcvm to tell us what the network is on now
     2) Pull history log or static deltas from history archive
     3) Replay or force-apply deltas, depending on catchup mode
 
@@ -431,7 +431,7 @@ LedgerManagerImpl::valueExternalized(LedgerCloseData const& ledgerData)
     auto lcl = getLastClosedLedgerNum();
 
     CLOG_INFO(Ledger,
-              "Got consensus: [seq={}, prev={}, txs={}, ops={}, sv: {}]",
+              "Got validation: [seq={}, prev={}, txs={}, ops={}, sv: {}]",
               ledgerData.getLedgerSeq(),
               hexAbbrev(ledgerData.getTxSet()->previousLedgerHash()),
               ledgerData.getTxSet()->sizeTx(), ledgerData.getTxSet()->sizeOp(),
@@ -523,7 +523,7 @@ LedgerManagerImpl::startCatchup(CatchupConfiguration configuration,
 uint64_t
 LedgerManagerImpl::secondsSinceLastLedgerClose() const
 {
-    uint64_t ct = getLastClosedLedgerHeader().header.scpValue.closeTime;
+    uint64_t ct = getLastClosedLedgerHeader().header.pogcvmValue.closeTime;
     uint64_t now = mApp.timeNow();
     return (now > ct) ? (now - ct) : 0;
 }
@@ -558,7 +558,7 @@ LedgerManagerImpl::emitNextMeta()
 
 /*
     This is the main method that closes the current ledger based on
-the close context that was computed by SCP or by the historical module
+the close context that was computed by pogcvm or by the historical module
 during replays.
 
 */
@@ -617,7 +617,7 @@ LedgerManagerImpl::closeLedger(LedgerCloseData const& ledgerData)
     {
         CLOG_ERROR(
             Ledger,
-            "Corrupt transaction set: TxSet hash is {}, SCP value reports {}",
+            "Corrupt transaction set: TxSet hash is {}, pogcvm value reports {}",
             txSet->getContentsHash(), ledgerData.getValue().txSetHash);
         CLOG_ERROR(Ledger, "{}", POSSIBLY_CORRUPTED_QUORUM_SET);
 
@@ -625,7 +625,7 @@ LedgerManagerImpl::closeLedger(LedgerCloseData const& ledgerData)
     }
 
     auto const& sv = ledgerData.getValue();
-    header.current().scpValue = sv;
+    header.current().pogcvmValue = sv;
 
     maybeResetLedgerCloseMetaDebugStream(header.current().ledgerSeq);
 
@@ -651,7 +651,7 @@ LedgerManagerImpl::closeLedger(LedgerCloseData const& ledgerData)
         txSet->toXDR(ledgerCloseMeta->v0().txSet);
     }
 
-    // the transaction set that was agreed upon by consensus
+    // the transaction set that was agreed upon by validation
     // was sorted by hash; we reorder it so that transactions are
     // sorted such that sequence numbers are respected
     vector<TransactionFrameBasePtr> txs = ledgerData.getTxSet()->sortForApply();
@@ -667,7 +667,7 @@ LedgerManagerImpl::closeLedger(LedgerCloseData const& ledgerData)
 
     ltx.loadHeader().current().txSetResultHash = xdrSha256(txResultSet);
 
-    // apply any upgrades that were decided during consensus
+    // apply any upgrades that were decided during validation
     // this must be done after applying transactions as the txset
     // was validated before upgrades
     for (size_t i = 0; i < sv.upgrades.size(); i++)

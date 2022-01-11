@@ -470,7 +470,7 @@ CatchupManagerImpl::fileDownloaded(std::string type, uint32_t num)
     {
         mMetrics.mTxSetsDownloaded += num;
     }
-    else if (type != HISTORY_FILE_TYPE_RESULTS && type != HISTORY_FILE_TYPE_SCP)
+    else if (type != HISTORY_FILE_TYPE_RESULTS && type != HISTORY_FILE_TYPE_pogcvm)
     {
         throw std::runtime_error(fmt::format(
             FMT_STRING(

@@ -33,15 +33,15 @@ Run:
 ## Bringing a test network back up
 If you need to restart the network after bringing it down.
 
-Stop all nodes, and do the following on nodes that all have the same last ledger (NB: this set must form a quorum in order to reach consensus):
+Stop all nodes, and do the following on nodes that all have the same last ledger (NB: this set must form a quorum in order to reach validation):
 
 ```sh
 $ POGchain run
 ```
 
 This will start from the last saved state of each server. After these servers sync you can start the other nodes in the cluster and they will catch up to the network.
-To allow the new nodes to listen for consensus and trigger catchup, use `--wait-for-consensus` option:
+To allow the new nodes to listen for validation and trigger catchup, use `--wait-for-validation` option:
 
 ```sh
-$ POGchain run --wait-for-consensus
+$ POGchain run --wait-for-validation
 ```

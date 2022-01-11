@@ -25,24 +25,24 @@ There are 3 types of network available for testing.
 
 #### What it's not so good for
 * The ledger size may not be big enough depending on the test being performed.
-* SCP and flooding related changes typically require all validators to run code compatible with a change.
+* pogcvm and flooding related changes typically require all validators to run code compatible with a change.
 * Load testing or stress testing are not going to yield meaningful results on testnet due to the centralized nature of the deployment and dependence on specific compute profile.
 
 ### Public network
 #### What it's good for
 * The public network has historical data dating back to when the network launched in 2015, the transaction history is as diverse as it can be.
 * Validating the performance characteristics of old versions of the protocol - which may allow to quantify potential performance regressions in old versions (that can be acceptable).
-* The public network has a much more diverse set of validators than testnet, which allows better evaluation of SCP related metrics.
+* The public network has a much more diverse set of validators than testnet, which allows better evaluation of pogcvm related metrics.
 
 #### What it's not good for
-* SCP and flooding related changes typically require all validators to run code compatible with a change.
+* pogcvm and flooding related changes typically require all validators to run code compatible with a change.
 * The ledger may not be large enough when evaluating future trends.
 * Stress testing is expensive on the network and may lead to unnecessary outage.
 
 ### Private network
 #### What it's good for
 * Injecting large amount of transactions in a network while controlling all parameters (can use some data from public network if using the same passphrase).
-* Evaluating SCP and overlay for various network and trust topologies.
+* Evaluating pogcvm and overlay for various network and trust topologies.
 Load testing (observe baseline metrics) and stress testing (evaluating breaking points).
 
 #### What it's not good for
@@ -72,7 +72,7 @@ In order, this tests the following sequence:
 ## Inject transactions
 Inject transactions, wait until they are incorporated into a ledger.
 
-This scenario looks at the overhead of flooding transactions and SCP messages (required for transactions to be included in a ledger).
+This scenario looks at the overhead of flooding transactions and pogcvm messages (required for transactions to be included in a ledger).
 
 ### Built-in load generator
 POGchain has a built-in load generator that allows to inject transactions on private networks.

@@ -57,7 +57,7 @@ class CatchupManager
     // Forcibly switch the application into catchup mode, treating `toLedger`
     // as the destination ledger number and count as the number of past ledgers
     // that should be replayed. Normally this happens automatically when
-    // LedgerManager detects it is desynchronized from SCP's consensus ledger.
+    // LedgerManager detects it is desynchronized from pogcvm's validation ledger.
     // This method is present in the public interface to permit testing and
     // offline catchups.
     virtual void startCatchup(CatchupConfiguration configuration,

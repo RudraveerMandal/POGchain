@@ -2,10 +2,10 @@
 // under the Apache License, Version 2.0. See the COPYING file at the root
 // of this distribution or at http://www.apache.org/licenses/LICENSE-2.0
 
-#include "scp/SCP.h"
+#include "pogcvm/pogcvm.h"
 #include "crypto/Hex.h"
-#include "scp/LocalNode.h"
-#include "scp/Slot.h"
+#include "pogcvm/LocalNode.h"
+#include "pogcvm/Slot.h"
 #include "util/GlobalChecks.h"
 #include "util/Logging.h"
 #include "util/XDROperators.h"
@@ -18,23 +18,23 @@
 namespace POGchain
 {
 
-SCP::SCP(SCPDriver& driver, NodeID const& nodeID, bool isValidator,
-         SCPQuorumSet const& qSetLocal)
+pogcvm::pogcvm(pogcvmDriver& driver, NodeID const& nodeID, bool isValidator,
+         pogcvmQuorumSet const& qSetLocal)
     : mDriver(driver)
 {
     mLocalNode =
         std::make_shared<LocalNode>(nodeID, isValidator, qSetLocal, driver);
 }
 
-SCP::EnvelopeState
-SCP::receiveEnvelope(SCPEnvelopeWrapperPtr envelope)
+pogcvm::EnvelopeState
+pogcvm::receiveEnvelope(pogcvmEnvelopeWrapperPtr envelope)
 {
     uint64 slotIndex = envelope->getStatement().slotIndex;
     return getSlot(slotIndex, true)->processEnvelope(envelope, false);
 }
 
 bool
-SCP::nominate(uint64 slotIndex, ValueWrapperPtr value,
+pogcvm::nominate(uint64 slotIndex, ValueWrapperPtr value,
               Value const& previousValue)
 {
     dbgAssert(isValidator());
@@ -42,7 +42,7 @@ SCP::nominate(uint64 slotIndex, ValueWrapperPtr value,
 }
 
 void
-SCP::stopNomination(uint64 slotIndex)
+pogcvm::stopNomination(uint64 slotIndex)
 {
     auto s = getSlot(slotIndex, false);
     if (s)
@@ -52,25 +52,25 @@ SCP::stopNomination(uint64 slotIndex)
 }
 
 void
-SCP::updateLocalQuorumSet(SCPQuorumSet const& qSet)
+pogcvm::updateLocalQuorumSet(pogcvmQuorumSet const& qSet)
 {
     mLocalNode->updateQuorumSet(qSet);
 }
 
-SCPQuorumSet const&
-SCP::getLocalQuorumSet()
+pogcvmQuorumSet const&
+pogcvm::getLocalQuorumSet()
 {
     return mLocalNode->getQuorumSet();
 }
 
 NodeID const&
-SCP::getLocalNodeID()
+pogcvm::getLocalNodeID()
 {
     return mLocalNode->getNodeID();
 }
 
 void
-SCP::purgeSlots(uint64 maxSlotIndex)
+pogcvm::purgeSlots(uint64 maxSlotIndex)
 {
     auto it = mKnownSlots.begin();
     while (it != mKnownSlots.end() && it->first < maxSlotIndex)
@@ -80,13 +80,13 @@ SCP::purgeSlots(uint64 maxSlotIndex)
 }
 
 std::shared_ptr<LocalNode>
-SCP::getLocalNode()
+pogcvm::getLocalNode()
 {
     return mLocalNode;
 }
 
 std::shared_ptr<Slot>
-SCP::getSlot(uint64 slotIndex, bool create)
+pogcvm::getSlot(uint64 slotIndex, bool create)
 {
     std::shared_ptr<Slot> res;
     auto it = mKnownSlots.find(slotIndex);
@@ -106,7 +106,7 @@ SCP::getSlot(uint64 slotIndex, bool create)
 }
 
 Json::Value
-SCP::getJsonInfo(size_t limit, bool fullKeys)
+pogcvm::getJsonInfo(size_t limit, bool fullKeys)
 {
     Json::Value ret;
     auto it = mKnownSlots.rbegin();
@@ -121,7 +121,7 @@ SCP::getJsonInfo(size_t limit, bool fullKeys)
 }
 
 Json::Value
-SCP::getJsonQuorumInfo(NodeID const& id, bool summary, bool fullKeys,
+pogcvm::getJsonQuorumInfo(NodeID const& id, bool summary, bool fullKeys,
                        uint64 index)
 {
     Json::Value ret;
@@ -147,13 +147,13 @@ SCP::getJsonQuorumInfo(NodeID const& id, bool summary, bool fullKeys,
 }
 
 bool
-SCP::isValidator()
+pogcvm::isValidator()
 {
     return mLocalNode->isValidator();
 }
 
 bool
-SCP::isSlotFullyValidated(uint64 slotIndex)
+pogcvm::isSlotFullyValidated(uint64 slotIndex)
 {
     auto slot = getSlot(slotIndex, false);
     if (slot)
@@ -167,7 +167,7 @@ SCP::isSlotFullyValidated(uint64 slotIndex)
 }
 
 bool
-SCP::gotVBlocking(uint64 slotIndex)
+pogcvm::gotVBlocking(uint64 slotIndex)
 {
     auto slot = getSlot(slotIndex, false);
     if (slot)
@@ -181,13 +181,13 @@ SCP::gotVBlocking(uint64 slotIndex)
 }
 
 size_t
-SCP::getKnownSlotsCount() const
+pogcvm::getKnownSlotsCount() const
 {
     return mKnownSlots.size();
 }
 
 size_t
-SCP::getCumulativeStatemtCount() const
+pogcvm::getCumulativeStatemtCount() const
 {
     size_t c = 0;
     for (auto const& s : mKnownSlots)
@@ -197,8 +197,8 @@ SCP::getCumulativeStatemtCount() const
     return c;
 }
 
-std::vector<SCPEnvelope>
-SCP::getLatestMessagesSend(uint64 slotIndex)
+std::vector<pogcvmEnvelope>
+pogcvm::getLatestMessagesSend(uint64 slotIndex)
 {
     auto slot = getSlot(slotIndex, false);
     if (slot)
@@ -207,26 +207,26 @@ SCP::getLatestMessagesSend(uint64 slotIndex)
     }
     else
     {
-        return std::vector<SCPEnvelope>();
+        return std::vector<pogcvmEnvelope>();
     }
 }
 
 void
-SCP::setStateFromEnvelope(uint64 slotIndex, SCPEnvelopeWrapperPtr e)
+pogcvm::setStateFromEnvelope(uint64 slotIndex, pogcvmEnvelopeWrapperPtr e)
 {
     auto slot = getSlot(slotIndex, true);
     slot->setStateFromEnvelope(e);
 }
 
 bool
-SCP::empty() const
+pogcvm::empty() const
 {
     return mKnownSlots.empty();
 }
 
 void
-SCP::processCurrentState(uint64 slotIndex,
-                         std::function<bool(SCPEnvelope const&)> const& f,
+pogcvm::processCurrentState(uint64 slotIndex,
+                         std::function<bool(pogcvmEnvelope const&)> const& f,
                          bool forceSelf)
 {
     auto slot = getSlot(slotIndex, false);
@@ -237,7 +237,7 @@ SCP::processCurrentState(uint64 slotIndex,
 }
 
 void
-SCP::processSlotsAscendingFrom(uint64 startingSlot,
+pogcvm::processSlotsAscendingFrom(uint64 startingSlot,
                                std::function<bool(uint64)> const& f)
 {
     for (auto iter = mKnownSlots.lower_bound(startingSlot);
@@ -251,7 +251,7 @@ SCP::processSlotsAscendingFrom(uint64 startingSlot,
 }
 
 void
-SCP::processSlotsDescendingFrom(uint64 startingSlot,
+pogcvm::processSlotsDescendingFrom(uint64 startingSlot,
                                 std::function<bool(uint64)> const& f)
 {
     auto iter = mKnownSlots.upper_bound(startingSlot);
@@ -265,8 +265,8 @@ SCP::processSlotsDescendingFrom(uint64 startingSlot,
     }
 }
 
-SCPEnvelope const*
-SCP::getLatestMessage(NodeID const& id)
+pogcvmEnvelope const*
+pogcvm::getLatestMessage(NodeID const& id)
 {
     for (auto it = mKnownSlots.rbegin(); it != mKnownSlots.rend(); it++)
     {
@@ -280,8 +280,8 @@ SCP::getLatestMessage(NodeID const& id)
     return nullptr;
 }
 
-std::vector<SCPEnvelope>
-SCP::getExternalizingState(uint64 slotIndex)
+std::vector<pogcvmEnvelope>
+pogcvm::getExternalizingState(uint64 slotIndex)
 {
     auto slot = getSlot(slotIndex, false);
     if (slot)
@@ -290,18 +290,18 @@ SCP::getExternalizingState(uint64 slotIndex)
     }
     else
     {
-        return std::vector<SCPEnvelope>();
+        return std::vector<pogcvmEnvelope>();
     }
 }
 
 std::string
-SCP::getValueString(Value const& v) const
+pogcvm::getValueString(Value const& v) const
 {
     return mDriver.getValueString(v);
 }
 
 std::string
-SCP::ballotToStr(SCPBallot const& ballot) const
+pogcvm::ballotToStr(pogcvmBallot const& ballot) const
 {
     std::ostringstream oss;
 
@@ -310,7 +310,7 @@ SCP::ballotToStr(SCPBallot const& ballot) const
 }
 
 std::string
-SCP::ballotToStr(std::unique_ptr<SCPBallot> const& ballot) const
+pogcvm::ballotToStr(std::unique_ptr<pogcvmBallot> const& ballot) const
 {
     std::string res;
     if (ballot)
@@ -325,13 +325,13 @@ SCP::ballotToStr(std::unique_ptr<SCPBallot> const& ballot) const
 }
 
 std::string
-SCP::envToStr(SCPEnvelope const& envelope, bool fullKeys) const
+pogcvm::envToStr(pogcvmEnvelope const& envelope, bool fullKeys) const
 {
     return envToStr(envelope.statement, fullKeys);
 }
 
 std::string
-SCP::envToStr(SCPStatement const& st, bool fullKeys) const
+pogcvm::envToStr(pogcvmStatement const& st, bool fullKeys) const
 {
     std::ostringstream oss;
 
@@ -343,7 +343,7 @@ SCP::envToStr(SCPStatement const& st, bool fullKeys) const
         << " i: " << st.slotIndex;
     switch (st.pledges.type())
     {
-    case SCPStatementType::SCP_ST_PREPARE:
+    case pogcvmStatementType::pogcvm_ST_PREPARE:
     {
         auto const& p = st.pledges.prepare();
         oss << " | PREPARE"
@@ -354,7 +354,7 @@ SCP::envToStr(SCPStatement const& st, bool fullKeys) const
             << " | h.n: " << p.nH;
     }
     break;
-    case SCPStatementType::SCP_ST_CONFIRM:
+    case pogcvmStatementType::pogcvm_ST_CONFIRM:
     {
         auto const& c = st.pledges.confirm();
         oss << " | CONFIRM"
@@ -363,7 +363,7 @@ SCP::envToStr(SCPStatement const& st, bool fullKeys) const
             << " | c.n: " << c.nCommit << " | h.n: " << c.nH;
     }
     break;
-    case SCPStatementType::SCP_ST_EXTERNALIZE:
+    case pogcvmStatementType::pogcvm_ST_EXTERNALIZE:
     {
         auto const& ex = st.pledges.externalize();
         oss << " | EXTERNALIZE"
@@ -371,7 +371,7 @@ SCP::envToStr(SCPStatement const& st, bool fullKeys) const
             << " | (lastD): " << hexAbbrev(qSetHash);
     }
     break;
-    case SCPStatementType::SCP_ST_NOMINATE:
+    case pogcvmStatementType::pogcvm_ST_NOMINATE:
     {
         auto const& nom = st.pledges.nominate();
         oss << " | NOMINATE"

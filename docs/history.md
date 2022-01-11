@@ -4,11 +4,11 @@ title: History
 
 POGchain , or POGchain, separates data into "current" and "historical."
 
-Current data is the subject of peer-to-peer messages--consensus is only concerned with the present,
+Current data is the subject of peer-to-peer messages--validation is only concerned with the present,
 not the past. Current data _resides_ in a local SQL database paired with each POGchain
 process (in captive's case, the SQL database is replaced by an in memory datastructure).
 This database is consulted and updated "live" in an ACID fashion as POGchain applies
-each [transaction](transaction.md) set for which consensus was reached and forms each new [ledger](ledger.md).
+each [transaction](transaction.md) set for which validation was reached and forms each new [ledger](ledger.md).
 
 Unlike many similar systems, POGchain does _not_ need to consult history in order to apply a
 single transaction or set of transactions. Only "current" data--the state of the current ledger
@@ -40,7 +40,7 @@ History archives are defined in a very lightweight fashion, in POGchain's config
 providing a pair of `get` and `put` command templates. POGchain will run the provided command
 template, with its own file names substituted for placeholders in the template, in order to get files
 from, and put files into, a given history archive. This interface is meant to support simple
-commands like `curl`, `wget`, `aws`, `gcutil`, `s3cmd`, `cp`, `scp`, `ftp` or similar. Several
+commands like `curl`, `wget`, `aws`, `gcutil`, `s3cmd`, `cp`, `pogcvm`, `ftp` or similar. Several
 examples are provided in the example configuration files.
 
 
@@ -52,7 +52,7 @@ and formats.
 
 XDR is used for 3 related but different tasks, the first 2 of which are discussed elsewhere:
 
-  * Exchanging peer-to-peer network protocol messages and achieving consensus.
+  * Exchanging peer-to-peer network protocol messages and achieving validation.
   * Cryptographically hashing ledger entries, buckets, transactions, and similar values.
   * Storing and retrieving history (discussed in this document).
 
@@ -73,9 +73,9 @@ transactions, and a small amount of indexing metadata stored in JSON files. This
 of fine-grained auditing, transaction replay, or direct catchup.
 
 Checkpointing happens asynchronously based on snapshot read isolation in the SQL database and
-immutable copies of buckets; it does not interrupt or delay further rounds of consensus, even if the
+immutable copies of buckets; it does not interrupt or delay further rounds of validation, even if the
 history archive is temporarily unavailable or slow. If a pending checkpoint publication fails too
-many times, it will be discarded. In theory, every validating node that is in consensus should
+many times, it will be discarded. In theory, every validating node that is in validation should
 publish identical checkpoints (aside from server-identification metadata). Thus, so long as _some_
 history archive in a group receives a copy of a checkpoint, the files of the checkpoint can be
 safely copied to any other history archive that is missing them.
@@ -95,7 +95,7 @@ another when out of sync. If you run a POGchain server without configuring histo
 will never synchronize with its peers (unless they all start at the same time).
 
 The peer-to-peer protocol among POGchain peers deals only with the current ledger's transactions
-and consensus rounds. History is sent one-way from active peers to history archives, and is
+and validation rounds. History is sent one-way from active peers to history archives, and is
 retrieved one-way by new peers from history archives. Aside from establishing which value to
 catch up to, peers do _not_ provide one another with the data to catch up when out of sync.
 
@@ -151,11 +151,11 @@ A few reasons that the extra effort of configuring independent history archives 
     also parallelizes almost perfectly and is provided by a wide variety of highly competitive
     vendors.
 
-  - Finally, configuring independent history archives enforces a separation between (time-sensitive) consensus and (time-insensitive) history
+  - Finally, configuring independent history archives enforces a separation between (time-sensitive) validation and (time-insensitive) history
     traffic, which is good for isolating and managing system load. New peers coming online may need
     significant amounts of data to catch up; if they requested this data from existing peers, they would put
     immediate load on those peers and could interfere with those peers performing the delicate and
-    time-sensitive work of acquiring consensus and forming new ledgers. By performing catchup
+    time-sensitive work of acquiring validation and forming new ledgers. By performing catchup
     against independent history archives, the work can occur in parallel and use entirely
     separate resources (network, CPU, disk).
 
@@ -217,7 +217,7 @@ Aside from the root HAS file, all other files in the history archive are named b
 naming schemes:
 
   - **By ledger number**: these files have the form `category/ww/xx/yy/category-wwxxyyzz.xdr.gz`, where:
-    - `category` describes the content of the file (`history`, `ledger`, `transactions`, `results` or `scp`)
+    - `category` describes the content of the file (`history`, `ledger`, `transactions`, `results` or `pogcvm`)
     - `0xwwxxyyzz` is the 32bit ledger sequence number for the checkpoint at which the file was written,
     expressed as an 8 hex digit, lower-case ASCII string.
     - `ext` is a file extension, either `.json` or `.xdr.gz`
@@ -288,11 +288,11 @@ In total, each checkpoint number `0xwwxxyyzz` consists of the following files:
     to the ledger without actually running the `POGchain` transaction-apply logic.
     If full fidelity of ledger entry history is needed, see the section on the subject in the [integration document](./integration.md#ledger-state-transition-information-transactions-etc).
 
-  - (Optionally) one SCP file, named by ledger number as `scp/ww/xx/yy/scp-wwxxyyzz.xdr.gz`. The file
+  - (Optionally) one pogcvm file, named by ledger number as `pogcvm/ww/xx/yy/pogcvm-wwxxyyzz.xdr.gz`. The file
     contains a sequence of XDR structures of the type
-    [`SCPHistoryEntry`](/src/xdr/POGchain-ledger.x), with zero-or-more structures per ledger. The
-    file records the sequence of nomination and ballot protocol messages exchanged during consensus
+    [`pogcvmHistoryEntry`](/src/xdr/POGchain-ledger.x), with zero-or-more structures per ledger. The
+    file records the sequence of nomination and ballot protocol messages exchanged during validation
     for each ledger. It is primarily of interest when debugging, or when analyzing
-    trust-relationships and protocol behavior of SCP. It is not required for reconstructing the
+    trust-relationships and protocol behavior of pogcvm. It is not required for reconstructing the
     ledger state or interpreting the transactions.
 

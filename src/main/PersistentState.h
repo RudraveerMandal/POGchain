@@ -19,7 +19,7 @@ class PersistentState
     {
         kLastClosedLedger = 0,
         kHistoryArchiveState,
-        kLastSCPData,
+        kLastpogcvmData,
         kDatabaseSchema,
         kNetworkPassphrase,
         kLedgerUpgrades,
@@ -32,9 +32,9 @@ class PersistentState
     std::string getState(Entry stateName);
     void setState(Entry stateName, std::string const& value);
 
-    // Special methods for SCP state (multiple slots)
-    std::vector<std::string> getSCPStateAllSlots();
-    void setSCPStateForSlot(uint64 slot, std::string const& value);
+    // Special methods for pogcvm state (multiple slots)
+    std::vector<std::string> getpogcvmStateAllSlots();
+    void setpogcvmStateForSlot(uint64 slot, std::string const& value);
 
     bool shouldRebuildForType(LedgerEntryType let);
     void clearRebuildForType(LedgerEntryType let);

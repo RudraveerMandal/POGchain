@@ -35,7 +35,7 @@ isValid(LedgerHeader const& lh)
 {
     bool res = (lh.ledgerSeq <= INT32_MAX);
 
-    res = res && (lh.scpValue.closeTime <= INT64_MAX);
+    res = res && (lh.pogcvmValue.closeTime <= INT64_MAX);
     res = res && (lh.feePool >= 0);
     res = res && (lh.idPool <= INT64_MAX);
     return res;
@@ -69,7 +69,7 @@ storeInDatabase(Database& db, LedgerHeader const& header)
     st.exchange(soci::use(prevHash));
     st.exchange(soci::use(bucketListHash));
     st.exchange(soci::use(header.ledgerSeq));
-    st.exchange(soci::use(header.scpValue.closeTime));
+    st.exchange(soci::use(header.pogcvmValue.closeTime));
     st.exchange(soci::use(headerEncoded));
     st.define_and_bind();
     {

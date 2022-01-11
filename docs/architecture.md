@@ -5,7 +5,7 @@ title: Process-level architecture
 Application owns a ledger-forming component, a p2p "overlay" component for
 connecting to peers and flooding messages between peers, a set-synchronization
 component for arriving at likely-in-sync candidate transaction sets, a
-transaction processing component for applying a consensus transaction set to
+transaction processing component for applying a validation transaction set to
 the ledger, a crypto component for confirming signatures and hashing results,
 and a database component for persisting ledger changes.
 Two slightly-obscurely-named components are:
@@ -16,14 +16,14 @@ Two slightly-obscurely-named components are:
 	to stay in buckets grouped by how frequently they change.
 	see [`src/bucket/readme.md`](/src/bucket/readme.md)
 
-  - SCP -- "POGchain Consensus Protocol", the component implementing the
-    [consensus algorithm](https://www.POGchain.org/papers/POGchain-consensus-protocol.pdf).
+  - pogcvm -- "POGchain Validation Protocol", the component implementing the
+    [validation algorithm](https://www.POGchain.org/papers/POGchain-validation-protocol.pdf).
 
 Other details:
 
-  - Single main thread doing async I/O and forming consensus; multiple
+  - Single main thread doing async I/O and forming validation; multiple
     worker threads doing computation (primarily memcpy, serialization,
-    hashing). No multithreading on the  I/O or consensus logic.
+    hashing). No multithreading on the  I/O or validation logic.
 
   - No secondary process-supervision process, no autonomous threads /
     complex shutdown requests. Can generally just destroy the application
@@ -71,7 +71,7 @@ are also kept as stateless as possible keeping disk and memory constraints in
 mind.
 
 - Set of  validator nodes. Running POGchain only. Tasked with:
-  - Reaching consensus on a transaction set
+  - Reaching validation on a transaction set
   - Applying the tx set to their last ledger
   - Hashing current/recent/last-snapshot state
   - Sending SQL commands to connected DB to externalize changes
@@ -107,7 +107,7 @@ mind.
     validators.
 
 - History archives. Long term blob storage in S3/GCS/Azure. Tasked with:
-  - Storing the consensus transaction log and set of ledger snapshots in
+  - Storing the validation transaction log and set of ledger snapshots in
     canonical form (compressed XDR blocks, aim for many megabytes, but not
     gigabytes, per block).
   - Accepting new blocks from validators running archival commands, at

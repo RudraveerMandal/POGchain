@@ -188,7 +188,7 @@ TEST_CASE("application setup", "[applicationutils]")
         SIMULATION_CREATE_NODE(Node1); // Validator
         SIMULATION_CREATE_NODE(Node2); // Captive 
 
-        SCPQuorumSet qSet;
+        pogcvmQuorumSet qSet;
         qSet.threshold = 1;
         qSet.validators.push_back(vNode1NodeID);
 
@@ -202,7 +202,7 @@ TEST_CASE("application setup", "[applicationutils]")
         Config cfg2 = getTestConfig(2);
         cfg2.ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING = true;
         cfg2.NODE_IS_VALIDATOR = false;
-        cfg2.FORCE_SCP = false;
+        cfg2.FORCE_pogcvm = false;
         cfg2.INVARIANT_CHECKS = {};
         cfg2.setInMemoryMode();
         cfg2.MODE_AUTO_STARTS_OVERLAY = false;

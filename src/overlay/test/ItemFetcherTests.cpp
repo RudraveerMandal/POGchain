@@ -33,7 +33,7 @@ class HerderStub : public HerderImpl
 
   private:
     EnvelopeStatus
-    recvSCPEnvelope(SCPEnvelope const& envelope) override
+    recvpogcvmEnvelope(pogcvmEnvelope const& envelope) override
     {
         received.push_back(envelope.statement.pledges.confirm().nPrepared);
         return Herder::ENVELOPE_STATUS_PROCESSED;
@@ -63,14 +63,14 @@ class ApplicationStub : public TestApplication
     }
 };
 
-SCPEnvelope
+pogcvmEnvelope
 makeEnvelope(int id)
 {
     static int slotIndex{0};
 
-    auto result = SCPEnvelope{};
+    auto result = pogcvmEnvelope{};
     result.statement.slotIndex = ++slotIndex;
-    result.statement.pledges.type(SCP_ST_CONFIRM);
+    result.statement.pledges.type(pogcvm_ST_CONFIRM);
     result.statement.pledges.confirm().nPrepared = id;
     return result;
 }
@@ -90,7 +90,7 @@ TEST_CASE("ItemFetcher fetches", "[overlay][ItemFetcher]")
     });
 
     auto checkFetchingFor = [&itemFetcher](Hash hash,
-                                           std::vector<SCPEnvelope> envelopes) {
+                                           std::vector<pogcvmEnvelope> envelopes) {
         auto fetchingFor = itemFetcher.fetchingFor(hash);
         std::sort(std::begin(envelopes), std::end(envelopes));
         std::sort(std::begin(fetchingFor), std::end(fetchingFor));
@@ -353,7 +353,7 @@ TEST_CASE("next peer strategy", "[overlay][ItemFetcher]")
         }
         SECTION("peer1 told us that it knows")
         {
-            POGchainMessage msg(SCP_MESSAGE);
+            POGchainMessage msg(pogcvm_MESSAGE);
             msg.envelope() = hundredEnvelope1;
             auto index = sha256(xdr::xdr_to_opaque(msg));
             app->getOverlayManager().recvFloodedMsgID(msg, peer1, index);

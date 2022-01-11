@@ -8,7 +8,7 @@
 #include "database/DatabaseUtils.h"
 #include "herder/Herder.h"
 #include "main/Application.h"
-#include "scp/Slot.h"
+#include "pogcvm/Slot.h"
 #include "util/Decoder.h"
 #include "util/XDRStream.h"
 #include <Tracy.hpp>
@@ -35,8 +35,8 @@ HerderPersistenceImpl::~HerderPersistenceImpl()
 }
 
 void
-HerderPersistenceImpl::saveSCPHistory(uint32_t seq,
-                                      std::vector<SCPEnvelope> const& envs,
+HerderPersistenceImpl::savepogcvmHistory(uint32_t seq,
+                                      std::vector<pogcvmEnvelope> const& envs,
                                       QuorumTracker::QuorumMap const& qmap)
 {
     ZoneScoped;
@@ -45,20 +45,20 @@ HerderPersistenceImpl::saveSCPHistory(uint32_t seq,
         return;
     }
 
-    auto usedQSets = UnorderedMap<Hash, SCPQuorumSetPtr>{};
+    auto usedQSets = UnorderedMap<Hash, pogcvmQuorumSetPtr>{};
     auto& db = mApp.getDatabase();
 
     soci::transaction txscope(db.getSession());
 
     {
         auto prepClean = db.getPreparedStatement(
-            "DELETE FROM scphistory WHERE ledgerseq =:l");
+            "DELETE FROM pogcvmhistory WHERE ledgerseq =:l");
 
         auto& st = prepClean.statement();
         st.exchange(soci::use(seq));
         st.define_and_bind();
         {
-            ZoneNamedN(deleteSCPHistoryZone, "delete scphistory", true);
+            ZoneNamedN(deletepogcvmHistoryZone, "delete pogcvmhistory", true);
             st.execute(true);
         }
     }
@@ -77,7 +77,7 @@ HerderPersistenceImpl::saveSCPHistory(uint32_t seq,
         envelopeEncoded = decoder::encode_b64(envelopeBytes);
 
         auto prepEnv =
-            db.getPreparedStatement("INSERT INTO scphistory "
+            db.getPreparedStatement("INSERT INTO pogcvmhistory "
                                     "(nodeid, ledgerseq, envelope) VALUES "
                                     "(:n, :l, :e)");
 
@@ -87,7 +87,7 @@ HerderPersistenceImpl::saveSCPHistory(uint32_t seq,
         st.exchange(soci::use(envelopeEncoded));
         st.define_and_bind();
         {
-            ZoneNamedN(insertSCPHistoryZone, "insert scphistory", true);
+            ZoneNamedN(insertpogcvmHistoryZone, "insert pogcvmhistory", true);
             st.execute(true);
         }
         if (st.get_affected_rows() != 1)
@@ -146,13 +146,13 @@ HerderPersistenceImpl::saveSCPHistory(uint32_t seq,
 
         uint32_t lastSeenSeq;
         auto prepSelQSet = db.getPreparedStatement(
-            "SELECT lastledgerseq FROM scpquorums WHERE qsethash = :h");
+            "SELECT lastledgerseq FROM pogcvmquorums WHERE qsethash = :h");
         auto& stSel = prepSelQSet.statement();
         stSel.exchange(soci::into(lastSeenSeq));
         stSel.exchange(soci::use(qSetH));
         stSel.define_and_bind();
         {
-            ZoneNamedN(selectSCPQuorumsZone, "select scpquorums", true);
+            ZoneNamedN(selectpogcvmQuorumsZone, "select pogcvmquorums", true);
             stSel.execute(true);
         }
 
@@ -164,7 +164,7 @@ HerderPersistenceImpl::saveSCPHistory(uint32_t seq,
             }
 
             auto prepUpQSet = db.getPreparedStatement(
-                "UPDATE scpquorums SET "
+                "UPDATE pogcvmquorums SET "
                 "lastledgerseq = :l WHERE qsethash = :h");
 
             auto& stUp = prepUpQSet.statement();
@@ -172,7 +172,7 @@ HerderPersistenceImpl::saveSCPHistory(uint32_t seq,
             stUp.exchange(soci::use(qSetH));
             stUp.define_and_bind();
             {
-                ZoneNamedN(updateSCPQuorumsZone, "update scpquorums", true);
+                ZoneNamedN(updatepogcvmQuorumsZone, "update pogcvmquorums", true);
                 stUp.execute(true);
             }
             if (stUp.get_affected_rows() != 1)
@@ -188,7 +188,7 @@ HerderPersistenceImpl::saveSCPHistory(uint32_t seq,
             qSetEncoded = decoder::encode_b64(qSetBytes);
 
             auto prepInsQSet = db.getPreparedStatement(
-                "INSERT INTO scpquorums "
+                "INSERT INTO pogcvmquorums "
                 "(qsethash, lastledgerseq, qset) VALUES "
                 "(:h, :l, :v);");
 
@@ -198,7 +198,7 @@ HerderPersistenceImpl::saveSCPHistory(uint32_t seq,
             stIns.exchange(soci::use(qSetEncoded));
             stIns.define_and_bind();
             {
-                ZoneNamedN(insertSCPQuorumsZone, "insert scpquorums", true);
+                ZoneNamedN(insertpogcvmQuorumsZone, "insert pogcvmquorums", true);
                 stIns.execute(true);
             }
             if (stIns.get_affected_rows() != 1)
@@ -212,25 +212,25 @@ HerderPersistenceImpl::saveSCPHistory(uint32_t seq,
 }
 
 size_t
-HerderPersistence::copySCPHistoryToStream(Database& db, soci::session& sess,
+HerderPersistence::copypogcvmHistoryToStream(Database& db, soci::session& sess,
                                           uint32_t ledgerSeq,
                                           uint32_t ledgerCount,
-                                          XDROutputFileStream& scpHistory)
+                                          XDROutputFileStream& pogcvmHistory)
 {
     ZoneScoped;
     uint32_t begin = ledgerSeq, end = ledgerSeq + ledgerCount;
     size_t n = 0;
 
     // all known quorum sets
-    UnorderedMap<Hash, SCPQuorumSet> qSets;
+    UnorderedMap<Hash, pogcvmQuorumSet> qSets;
 
     for (uint32_t curLedgerSeq = begin; curLedgerSeq < end; curLedgerSeq++)
     {
-        // SCP envelopes for this ledger
+        // pogcvm envelopes for this ledger
         // quorum sets missing in this batch of envelopes
         std::set<Hash> missingQSets;
 
-        SCPHistoryEntry hEntryV;
+        pogcvmHistoryEntry hEntryV;
         hEntryV.v(0);
         auto& hEntry = hEntryV.v0();
         auto& lm = hEntry.ledgerMessages;
@@ -238,14 +238,14 @@ HerderPersistence::copySCPHistoryToStream(Database& db, soci::session& sess,
 
         auto& curEnvs = lm.messages;
 
-        // fetch SCP messages from history
+        // fetch pogcvm messages from history
         {
             std::string envB64;
 
-            ZoneNamedN(selectSCPHistoryZone, "select scphistory", true);
+            ZoneNamedN(selectpogcvmHistoryZone, "select pogcvmhistory", true);
 
             soci::statement st =
-                (sess.prepare << "SELECT envelope FROM scphistory "
+                (sess.prepare << "SELECT envelope FROM pogcvmhistory "
                                  "WHERE ledgerseq = :cur ORDER BY nodeid",
                  soci::into(envB64), soci::use(curLedgerSeq));
 
@@ -290,7 +290,7 @@ HerderPersistence::copySCPHistoryToStream(Database& db, soci::session& sess,
 
         if (curEnvs.size() != 0)
         {
-            scpHistory.writeOne(hEntryV);
+            pogcvmHistory.writeOne(hEntryV);
         }
     }
 
@@ -323,20 +323,20 @@ HerderPersistence::getNodeQuorumSet(Database& db, soci::session& sess,
     }
 }
 
-SCPQuorumSetPtr
+pogcvmQuorumSetPtr
 HerderPersistence::getQuorumSet(Database& db, soci::session& sess,
                                 Hash const& qSetHash)
 {
     ZoneScoped;
-    SCPQuorumSetPtr res;
-    SCPQuorumSet qset;
+    pogcvmQuorumSetPtr res;
+    pogcvmQuorumSet qset;
     std::string qset64, qSetHashHex;
 
     qSetHashHex = binToHex(qSetHash);
 
     {
-        ZoneNamedN(selectSCPQuorumsZone, "select scpquorums", true);
-        soci::statement st = (sess.prepare << "SELECT qset FROM scpquorums "
+        ZoneNamedN(selectpogcvmQuorumsZone, "select pogcvmquorums", true);
+        soci::statement st = (sess.prepare << "SELECT qset FROM pogcvmquorums "
                                               "WHERE qsethash = :h",
                               soci::into(qset64), soci::use(qSetHashHex));
 
@@ -350,7 +350,7 @@ HerderPersistence::getQuorumSet(Database& db, soci::session& sess,
             xdr::xdr_get g1(&qSetBytes.front(), &qSetBytes.back() + 1);
             xdr_argpack_archive(g1, qset);
 
-            res = std::make_shared<SCPQuorumSet>(std::move(qset));
+            res = std::make_shared<pogcvmQuorumSet>(std::move(qset));
         }
         return res;
     }
@@ -360,19 +360,19 @@ void
 HerderPersistence::dropAll(Database& db)
 {
     ZoneScoped;
-    db.getSession() << "DROP TABLE IF EXISTS scphistory";
+    db.getSession() << "DROP TABLE IF EXISTS pogcvmhistory";
 
-    db.getSession() << "DROP TABLE IF EXISTS scpquorums";
+    db.getSession() << "DROP TABLE IF EXISTS pogcvmquorums";
 
-    db.getSession() << "CREATE TABLE scphistory ("
+    db.getSession() << "CREATE TABLE pogcvmhistory ("
                        "nodeid      CHARACTER(56) NOT NULL,"
                        "ledgerseq   INT NOT NULL CHECK (ledgerseq >= 0),"
                        "envelope    TEXT NOT NULL"
                        ")";
 
-    db.getSession() << "CREATE INDEX scpenvsbyseq ON scphistory(ledgerseq)";
+    db.getSession() << "CREATE INDEX pogcvmenvsbyseq ON pogcvmhistory(ledgerseq)";
 
-    db.getSession() << "CREATE TABLE scpquorums ("
+    db.getSession() << "CREATE TABLE pogcvmquorums ("
                        "qsethash      CHARACTER(64) NOT NULL,"
                        "lastledgerseq INT NOT NULL CHECK (lastledgerseq >= 0),"
                        "qset          TEXT NOT NULL,"
@@ -380,7 +380,7 @@ HerderPersistence::dropAll(Database& db)
                        ")";
 
     db.getSession()
-        << "CREATE INDEX scpquorumsbyseq ON scpquorums(lastledgerseq)";
+        << "CREATE INDEX pogcvmquorumsbyseq ON pogcvmquorums(lastledgerseq)";
 
     db.getSession() << "DROP TABLE IF EXISTS quoruminfo";
 }
@@ -400,9 +400,9 @@ HerderPersistence::deleteOldEntries(Database& db, uint32_t ledgerSeq,
 {
     ZoneScoped;
     DatabaseUtils::deleteOldEntriesHelper(db.getSession(), ledgerSeq, count,
-                                          "scphistory", "ledgerseq");
+                                          "pogcvmhistory", "ledgerseq");
     DatabaseUtils::deleteOldEntriesHelper(db.getSession(), ledgerSeq, count,
-                                          "scpquorums", "lastledgerseq");
+                                          "pogcvmquorums", "lastledgerseq");
 }
 
 void
@@ -410,8 +410,8 @@ HerderPersistence::deleteNewerEntries(Database& db, uint32_t ledgerSeq)
 {
     ZoneScoped;
     DatabaseUtils::deleteNewerEntriesHelper(db.getSession(), ledgerSeq,
-                                            "scphistory", "ledgerseq");
+                                            "pogcvmhistory", "ledgerseq");
     DatabaseUtils::deleteNewerEntriesHelper(db.getSession(), ledgerSeq,
-                                            "scpquorums", "lastledgerseq");
+                                            "pogcvmquorums", "lastledgerseq");
 }
 }

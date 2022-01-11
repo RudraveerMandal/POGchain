@@ -315,7 +315,7 @@ VerifyLedgerChainWork::verifyHistoryOfSingleCheckpoint()
 
         incoming = mTrustedMaxLedger.get();
         releaseAssert(incoming.first == curr.header.ledgerSeq);
-        CLOG_INFO(History, "{} ledger {} against SCP hash",
+        CLOG_INFO(History, "{} ledger {} against pogcvm hash",
                   (incoming.second ? "Verifying" : "Skipping verification for"),
                   LedgerManager::ledgerAbbrev(curr));
     }

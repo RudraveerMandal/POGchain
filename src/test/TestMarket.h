@@ -5,7 +5,7 @@
 // of this distribution or at http://www.apache.org/licenses/LICENSE-2.0
 
 #include "test/TxTests.h"
-#include "xdr/POGchain-SCP.h"
+#include "xdr/POGchain-pogcvm.h"
 #include "xdr/POGchain-ledger.h"
 
 #include <map>

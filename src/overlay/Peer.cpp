@@ -230,11 +230,11 @@ Peer::sendDontHave(MessageType type, uint256 const& itemID)
 }
 
 void
-Peer::sendSCPQuorumSet(SCPQuorumSetPtr qSet)
+Peer::sendpogcvmQuorumSet(pogcvmQuorumSetPtr qSet)
 {
     ZoneScoped;
     POGchainMessage msg;
-    msg.type(SCP_QUORUMSET);
+    msg.type(pogcvm_QUORUMSET);
     msg.qSet() = *qSet;
 
     sendMessage(msg);
@@ -256,7 +256,7 @@ Peer::sendGetQuorumSet(uint256 const& setID)
 {
     ZoneScoped;
     POGchainMessage newMsg;
-    newMsg.type(GET_SCP_QUORUMSET);
+    newMsg.type(GET_pogcvm_QUORUMSET);
     newMsg.qSetHash() = setID;
 
     sendMessage(newMsg);
@@ -273,12 +273,12 @@ Peer::sendGetPeers()
 }
 
 void
-Peer::sendGetScpState(uint32 ledgerSeq)
+Peer::sendGetpogcvmState(uint32 ledgerSeq)
 {
     ZoneScoped;
     POGchainMessage newMsg;
-    newMsg.type(GET_SCP_STATE);
-    newMsg.getSCPLedgerSeq() = ledgerSeq;
+    newMsg.type(GET_pogcvm_STATE);
+    newMsg.getpogcvmLedgerSeq() = ledgerSeq;
 
     sendMessage(newMsg);
 }
@@ -355,27 +355,27 @@ Peer::msgSummary(POGchainMessage const& msg)
     case TRANSACTION:
         return "TRANSACTION";
 
-    case GET_SCP_QUORUMSET:
-        return fmt::format(FMT_STRING("GET_SCP_QSET {}"),
+    case GET_pogcvm_QUORUMSET:
+        return fmt::format(FMT_STRING("GET_pogcvm_QSET {}"),
                            hexAbbrev(msg.qSetHash()));
-    case SCP_QUORUMSET:
-        return "SCP_QSET";
-    case SCP_MESSAGE:
+    case pogcvm_QUORUMSET:
+        return "pogcvm_QSET";
+    case pogcvm_MESSAGE:
     {
         std::string t;
         switch (msg.envelope().statement.pledges.type())
         {
-        case SCP_ST_PREPARE:
-            t = "SCP::PREPARE";
+        case pogcvm_ST_PREPARE:
+            t = "pogcvm::PREPARE";
             break;
-        case SCP_ST_CONFIRM:
-            t = "SCP::CONFIRM";
+        case pogcvm_ST_CONFIRM:
+            t = "pogcvm::CONFIRM";
             break;
-        case SCP_ST_EXTERNALIZE:
-            t = "SCP::EXTERNALIZE";
+        case pogcvm_ST_EXTERNALIZE:
+            t = "pogcvm::EXTERNALIZE";
             break;
-        case SCP_ST_NOMINATE:
-            t = "SCP::NOMINATE";
+        case pogcvm_ST_NOMINATE:
+            t = "pogcvm::NOMINATE";
             break;
         default:
             t = "unknown";
@@ -384,9 +384,9 @@ Peer::msgSummary(POGchainMessage const& msg)
             FMT_STRING("{} ({})"), t,
             mApp.getConfig().toShortString(msg.envelope().statement.nodeID));
     }
-    case GET_SCP_STATE:
-        return fmt::format(FMT_STRING("GET_SCP_STATE {:d}"),
-                           msg.getSCPLedgerSeq());
+    case GET_pogcvm_STATE:
+        return fmt::format(FMT_STRING("GET_pogcvm_STATE {:d}"),
+                           msg.getpogcvmLedgerSeq());
 
     case SURVEY_REQUEST:
     case SURVEY_RESPONSE:
@@ -446,17 +446,17 @@ Peer::sendMessage(POGchainMessage const& msg, bool log)
     case TRANSACTION:
         getOverlayMetrics().mSendTransactionMeter.Mark();
         break;
-    case GET_SCP_QUORUMSET:
-        getOverlayMetrics().mSendGetSCPQuorumSetMeter.Mark();
+    case GET_pogcvm_QUORUMSET:
+        getOverlayMetrics().mSendGetpogcvmQuorumSetMeter.Mark();
         break;
-    case SCP_QUORUMSET:
-        getOverlayMetrics().mSendSCPQuorumSetMeter.Mark();
+    case pogcvm_QUORUMSET:
+        getOverlayMetrics().mSendpogcvmQuorumSetMeter.Mark();
         break;
-    case SCP_MESSAGE:
-        getOverlayMetrics().mSendSCPMessageSetMeter.Mark();
+    case pogcvm_MESSAGE:
+        getOverlayMetrics().mSendpogcvmMessageSetMeter.Mark();
         break;
-    case GET_SCP_STATE:
-        getOverlayMetrics().mSendGetSCPStateMeter.Mark();
+    case GET_pogcvm_STATE:
+        getOverlayMetrics().mSendGetpogcvmStateMeter.Mark();
         break;
     case SURVEY_REQUEST:
         getOverlayMetrics().mSendSurveyRequestMeter.Mark();
@@ -603,20 +603,20 @@ Peer::recvMessage(POGchainMessage const& POGchainMsg)
         type = Scheduler::ActionType::DROPPABLE_ACTION;
         break;
 
-    // consensus, inbound
+    // validation, inbound
     case GET_TX_SET:
-    case GET_SCP_QUORUMSET:
-    case GET_SCP_STATE:
-        cat = "SCPQ";
+    case GET_pogcvm_QUORUMSET:
+    case GET_pogcvm_STATE:
+        cat = "pogcvmQ";
         type = Scheduler::ActionType::DROPPABLE_ACTION;
         break;
 
-    // consensus, self
+    // validation, self
     case DONT_HAVE:
     case TX_SET:
-    case SCP_QUORUMSET:
-    case SCP_MESSAGE:
-        cat = "SCP";
+    case pogcvm_QUORUMSET:
+    case pogcvm_MESSAGE:
+        cat = "pogcvm";
         break;
 
     default:
@@ -761,31 +761,31 @@ Peer::recvRawMessage(POGchainMessage const& POGchainMsg)
     }
     break;
 
-    case GET_SCP_QUORUMSET:
+    case GET_pogcvm_QUORUMSET:
     {
-        auto t = getOverlayMetrics().mRecvGetSCPQuorumSetTimer.TimeScope();
-        recvGetSCPQuorumSet(POGchainMsg);
+        auto t = getOverlayMetrics().mRecvGetpogcvmQuorumSetTimer.TimeScope();
+        recvGetpogcvmQuorumSet(POGchainMsg);
     }
     break;
 
-    case SCP_QUORUMSET:
+    case pogcvm_QUORUMSET:
     {
-        auto t = getOverlayMetrics().mRecvSCPQuorumSetTimer.TimeScope();
-        recvSCPQuorumSet(POGchainMsg);
+        auto t = getOverlayMetrics().mRecvpogcvmQuorumSetTimer.TimeScope();
+        recvpogcvmQuorumSet(POGchainMsg);
     }
     break;
 
-    case SCP_MESSAGE:
+    case pogcvm_MESSAGE:
     {
-        auto t = getOverlayMetrics().mRecvSCPMessageTimer.TimeScope();
-        recvSCPMessage(POGchainMsg);
+        auto t = getOverlayMetrics().mRecvpogcvmMessageTimer.TimeScope();
+        recvpogcvmMessage(POGchainMsg);
     }
     break;
 
-    case GET_SCP_STATE:
+    case GET_pogcvm_STATE:
     {
-        auto t = getOverlayMetrics().mRecvGetSCPStateTimer.TimeScope();
-        recvGetSCPState(POGchainMsg);
+        auto t = getOverlayMetrics().mRecvGetpogcvmStateTimer.TimeScope();
+        recvGetpogcvmState(POGchainMsg);
     }
     break;
     }
@@ -901,61 +901,61 @@ Peer::getPing() const
 }
 
 void
-Peer::recvGetSCPQuorumSet(POGchainMessage const& msg)
+Peer::recvGetpogcvmQuorumSet(POGchainMessage const& msg)
 {
     ZoneScoped;
     maybeProcessPingResponse(msg.qSetHash());
 
-    SCPQuorumSetPtr qset = mApp.getHerder().getQSet(msg.qSetHash());
+    pogcvmQuorumSetPtr qset = mApp.getHerder().getQSet(msg.qSetHash());
 
     if (qset)
     {
-        sendSCPQuorumSet(qset);
+        sendpogcvmQuorumSet(qset);
     }
     else
     {
         CLOG_TRACE(Overlay, "No quorum set: {}", hexAbbrev(msg.qSetHash()));
-        sendDontHave(SCP_QUORUMSET, msg.qSetHash());
+        sendDontHave(pogcvm_QUORUMSET, msg.qSetHash());
         // do we want to ask other people for it?
     }
 }
 void
-Peer::recvSCPQuorumSet(POGchainMessage const& msg)
+Peer::recvpogcvmQuorumSet(POGchainMessage const& msg)
 {
     ZoneScoped;
     Hash hash = xdrSha256(msg.qSet());
-    mApp.getHerder().recvSCPQuorumSet(hash, msg.qSet());
+    mApp.getHerder().recvpogcvmQuorumSet(hash, msg.qSet());
 }
 
 void
-Peer::recvSCPMessage(POGchainMessage const& msg)
+Peer::recvpogcvmMessage(POGchainMessage const& msg)
 {
     ZoneScoped;
-    SCPEnvelope const& envelope = msg.envelope();
+    pogcvmEnvelope const& envelope = msg.envelope();
 
     auto type = msg.envelope().statement.pledges.type();
-    auto t = (type == SCP_ST_PREPARE
-                  ? getOverlayMetrics().mRecvSCPPrepareTimer.TimeScope()
-                  : (type == SCP_ST_CONFIRM
-                         ? getOverlayMetrics().mRecvSCPConfirmTimer.TimeScope()
-                         : (type == SCP_ST_EXTERNALIZE
+    auto t = (type == pogcvm_ST_PREPARE
+                  ? getOverlayMetrics().mRecvpogcvmPrepareTimer.TimeScope()
+                  : (type == pogcvm_ST_CONFIRM
+                         ? getOverlayMetrics().mRecvpogcvmConfirmTimer.TimeScope()
+                         : (type == pogcvm_ST_EXTERNALIZE
                                 ? getOverlayMetrics()
-                                      .mRecvSCPExternalizeTimer.TimeScope()
+                                      .mRecvpogcvmExternalizeTimer.TimeScope()
                                 : (getOverlayMetrics()
-                                       .mRecvSCPNominateTimer.TimeScope()))));
+                                       .mRecvpogcvmNominateTimer.TimeScope()))));
     std::string codeStr;
     switch (type)
     {
-    case SCP_ST_PREPARE:
+    case pogcvm_ST_PREPARE:
         codeStr = "PREPARE";
         break;
-    case SCP_ST_CONFIRM:
+    case pogcvm_ST_CONFIRM:
         codeStr = "CONFIRM";
         break;
-    case SCP_ST_EXTERNALIZE:
+    case pogcvm_ST_EXTERNALIZE:
         codeStr = "EXTERNALIZE";
         break;
-    case SCP_ST_NOMINATE:
+    case pogcvm_ST_NOMINATE:
     default:
         codeStr = "NOMINATE";
         break;
@@ -966,7 +966,7 @@ Peer::recvSCPMessage(POGchainMessage const& msg)
     Hash msgID;
     mApp.getOverlayManager().recvFloodedMsgID(msg, shared_from_this(), msgID);
 
-    auto res = mApp.getHerder().recvSCPEnvelope(envelope);
+    auto res = mApp.getHerder().recvpogcvmEnvelope(envelope);
     if (res == Herder::ENVELOPE_STATUS_DISCARDED)
     {
         // the message was discarded, remove it from the floodmap as well
@@ -975,11 +975,11 @@ Peer::recvSCPMessage(POGchainMessage const& msg)
 }
 
 void
-Peer::recvGetSCPState(POGchainMessage const& msg)
+Peer::recvGetpogcvmState(POGchainMessage const& msg)
 {
     ZoneScoped;
-    uint32 seq = msg.getSCPLedgerSeq();
-    mApp.getHerder().sendSCPStateToPeer(seq, shared_from_this());
+    uint32 seq = msg.getpogcvmLedgerSeq();
+    mApp.getHerder().sendpogcvmStateToPeer(seq, shared_from_this());
 }
 
 void
@@ -1231,7 +1231,7 @@ Peer::recvAuth(POGchainMessage const& msg)
     }
 
     auto low = mApp.getHerder().getMinLedgerSeqToAskPeers();
-    sendGetScpState(low);
+    sendGetpogcvmState(low);
 }
 
 void

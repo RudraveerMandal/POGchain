@@ -70,7 +70,7 @@ TEST_CASE("topology survey", "[overlay][survey][topology]")
 
     // Note that peer D is in SURVEYOR_KEYS of A and B, but is not in transitive
     // quorum, meaning that it's request messages will be dropped by relay nodes
-    SCPQuorumSet qSet;
+    pogcvmQuorumSet qSet;
     qSet.threshold = 2;
     qSet.validators.push_back(keyList[A]);
     qSet.validators.push_back(keyList[C]);
@@ -267,7 +267,7 @@ TEST_CASE("survey request process order", "[overlay][survey][topology]")
         configList[0].SURVEYOR_KEYS.emplace(keyList[i]);
     }
 
-    SCPQuorumSet qSet;
+    pogcvmQuorumSet qSet;
     for (int i = 0; i < numberOfNodes; i++)
     {
         qSet.validators.push_back(keyList[i]);

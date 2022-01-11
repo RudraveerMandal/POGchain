@@ -4,7 +4,7 @@ title: Administration
 
 ## Introduction
 
-POGchain  is the program nodes use to communicate with other nodes to create and maintain the POGchain peer-to-peer network.  It's an implementation of the POGchain Consensus Protocol configured to construct a chain of ledgers guaranteed to be in agreement across all participating nodes at all times.
+POGchain  is the program nodes use to communicate with other nodes to create and maintain the POGchain peer-to-peer network.  It's an implementation of the POGchain Validation Protocol configured to construct a chain of ledgers guaranteed to be in agreement across all participating nodes at all times.
 
 This document describes various aspects of installing, configuring, and maintaining a `POGchain` node.  It will explain:
 
@@ -42,10 +42,10 @@ As a node operator you can participate to the network in multiple ways.
 
 |                                                    | watcher       | archiver                            | basic validator                                                                                                             | full validator                       |
 | -------------------------------------------------- | ------------- | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
-| description                                        | non-validator | all of watcher + publish to archive | all of watcher + active participation in consensus (submit proposals for the transaction set to include in the next ledger) | basic validator + publish to archive |
+| description                                        | non-validator | all of watcher + publish to archive | all of watcher + active participation in validation (submit proposals for the transaction set to include in the next ledger) | basic validator + publish to archive |
 | submits transactions                               | yes           | yes                                 | yes                                                                                                                         | yes                                  |
 | supports horizon                                   | yes           | yes                                 | yes                                                                                                                         | yes                                  |
-| participates in consensus                          | no            | no                                  | yes                                                                                                                         | yes                                  |
+| participates in validation                          | no            | no                                  | yes                                                                                                                         | yes                                  |
 | helps other nodes to catch up and join the network | no            | yes                                 | no                                                                                                                          | yes                                  |
 | Increase the resiliency of the network             | No            | Medium                              | Low                                                                                                                         | High                                 |
 
@@ -201,7 +201,7 @@ The examples in this file don't specify `--conf betterfile.cfg` for brevity.
 Auditing of the P2P network is enabled by default, see the [overlay topology](#overlay-topology-survey) section for more detail if you'd like to disable it
 
 ### Validating node
-Nodes are considered **validating** if they take part in SCP and sign messages 
+Nodes are considered **validating** if they take part in pogcvm and sign messages 
 pledging that the network agreed to a particular transaction set.
 
 If you want to validate, you must generate a public/private key for your node.
@@ -232,7 +232,7 @@ QUALITY="MEDIUM"
 ```
 
 If you don't include a `NODE_SEED` or set `NODE_IS_VALIDATOR=true`, you will still
-watch SCP and see all the data in the network but will not send validation messages.
+watch pogcvm and see all the data in the network but will not send validation messages.
 
 If you run multiple validators, make sure to set `NODE_HOME_DOMAIN` to the same value
 so that your nodes get grouped correctly during [quorum set generation](#home-domains-array).
@@ -362,7 +362,7 @@ Here's a diagram depicting the nested quality levels and how they interact:
 
 It is generally a good idea to give information to your validator on other validators that you rely on. This is achieved by configuring `KNOWN_PEERS` and `PREFERRED_PEERS` with the addresses of your dependencies.
 
-Additionally, configuring `PREFERRED_PEER_KEYS` with the keys from your quorum set might be a good idea to give priority to the nodes that allows you to reach consensus.
+Additionally, configuring `PREFERRED_PEER_KEYS` with the keys from your quorum set might be a good idea to give priority to the nodes that allows you to reach validation.
 
 Without those settings, your validator depends on other nodes on the network to forward you the right messages, which is typically done as a best effort.
 
@@ -457,7 +457,7 @@ POGchain normally interacts with one or more "history archives," which are
 configurable facilities for storing and retrieving flat files containing history 
 checkpoints: bucket files and history logs. History archives are usually off-site 
 commodity storage services such as Amazon S3, Google Cloud Storage, 
-Azure Blob Storage, or custom SCP/SFTP/HTTP servers. 
+Azure Blob Storage, or custom pogcvm/SFTP/HTTP servers. 
 
 Use command templates in the config file to give the specifics of which 
 services you will use and how to access them. 
@@ -542,14 +542,14 @@ You should see `authenticated_count` increase.
       },
 ```
 
-#### Observing consensus
+#### Observing validation
 
 Until the node sees a quorum, it will say
 ```json
-"state" : "Joining SCP"
+"state" : "Joining pogcvm"
 ```
 
-After observing consensus, a new field `quorum` will be set with information on what the network decided on, at this point the node will switch to "*Catching up*":
+After observing validation, a new field `quorum` will be set with information on what the network decided on, at this point the node will switch to "*Catching up*":
 ```json
       "quorum" : {
          "qset" : {
@@ -690,7 +690,7 @@ Some notable fields in `info` are:
     * `pending_count` are connections that are not fully established yet
   * `protocol_version` is the maximum version of the protocol that this instance recognizes
   * `state` : indicates the node's synchronization status relative to the network.
-  * `quorum` : summarizes the state of the SCP protocol participants, the same as the information returned by the `quorum` command (see below).
+  * `quorum` : summarizes the state of the pogcvm protocol participants, the same as the information returned by the `quorum` command (see below).
 
 ### Overlay information
 
@@ -878,25 +878,25 @@ This output has two main sections: `qset` and `transitive`. The former describes
 Entries to watch for in the `qset` section -- describing the node and its quorum set -- are:
 
   * `agree` : the number of nodes in the quorum set that agree with this instance.
-  * `delayed` : the nodes that are participating to consensus but seem to be behind.
+  * `delayed` : the nodes that are participating to validation but seem to be behind.
   * `disagree`: the nodes that were participating but disagreed with this instance.
   * `fail_at` : the number of failed nodes that *would* cause this instance to halt.
   * `fail_with`: an example of such potential failure.
-  * `missing` : the nodes that were missing during this consensus round.
+  * `missing` : the nodes that were missing during this validation round.
   * `value` : the quorum set used by this node (`t` is the threshold expressed as a number of nodes).
 
 In the example above, 6 nodes are functioning properly, one is down (`stronghold1`), and
  the instance will fail if any two nodes still working (or one node and one inner-quorum-set) fail as well.
 
-If a node is stuck in state `Joining SCP`, this command allows to quickly find the reason:
+If a node is stuck in state `Joining pogcvm`, this command allows to quickly find the reason:
 
   * too many validators missing (down or without a good connectivity), solutions are:
     * [adjust quorum set](#crafting-a-quorum-set) (thresholds, grouping, etc) based on the nodes that are not missing
     * try to get a [better connectivity path](#quorum-and-overlay-network) to the missing validators
-  * network split would cause SCP to be stuck because of nodes that disagree. This would happen if either there is a bug in SCP, the network does not have quorum intersection or the disagreeing nodes are misbehaving (compromised, etc)
+  * network split would cause pogcvm to be stuck because of nodes that disagree. This would happen if either there is a bug in pogcvm, the network does not have quorum intersection or the disagreeing nodes are misbehaving (compromised, etc)
 
-Note that the node not being able to reach consensus does not mean that the network
-as a whole will not be able to reach consensus (and the opposite is true, the network
+Note that the node not being able to reach validation does not mean that the network
+as a whole will not be able to reach validation (and the opposite is true, the network
 may fail because of a different set of validators failing).
 
 You can get a sense of the quorum set health of a different node by doing
@@ -915,14 +915,14 @@ the `transitive` field. This has several important sub-fields:
   * `node_count` : the number of nodes in the transitive closure, which are considered when calculating quorum intersection.
   * `intersection` : whether or not the transitive closure enjoyed quorum intersection at the most recent check. This is of **utmost importance** in preventing network splits. It should always be true. If it is ever false, one or more nodes in the transitive closure of the quorum set is _currently_ misconfigured, and the network is at risk of splitting. Corrective action should be taken immediately, for which two additional sub-fields will be present to help suggest remedies:
     * `last_good_ledger` : this will note the last ledger for which the `intersection` field was evaluated as true; if some node reconfigured at or around that ledger, reverting that configuration change is the easiest corrective action to take.
-    * `potential_split` : this will contain a pair of lists of validator IDs, which is a potential pair of disjoint quorums that allowed by the current configuration. In other words, a possible split in consensus allowed by the current configuration. This may help narrow down the cause of the misconfiguration: likely the misconfiguration involves too-low a consensus threshold in one of the two potential quorums, and/or the absence of a mandatory trust relationship that would bridge the two.
+    * `potential_split` : this will contain a pair of lists of validator IDs, which is a potential pair of disjoint quorums that allowed by the current configuration. In other words, a possible split in validation allowed by the current configuration. This may help narrow down the cause of the misconfiguration: likely the misconfiguration involves too-low a validation threshold in one of the two potential quorums, and/or the absence of a mandatory trust relationship that would bridge the two.
   * `critical`: an "advance warning" field that lists nodes that _could cause_ the network to fail to enjoy quorum intersection, if they were misconfigured sufficiently badly. In a healthy transitive network configuration, this field will be `null`. If it is non-`null` then the network is essentially "one misconfiguration" (of the quorum sets of the listed nodes) away from no longer enjoying quorum intersection, and again, corrective action should be taken: careful adjustment to the quorum sets of _nodes that depend on_ the listed nodes, typically to strengthen quorums that depend on them.
 
 #### Detailed transitive quorum analysis
 
 The quorum endpoint can also retrieve detailed information for the transitive quorum.
 
-This is an easier to process format than what `scp` returns as it doesn't contain all SCP messages.
+This is an easier to process format than what `pogcvm` returns as it doesn't contain all pogcvm messages.
 
 `$ POGchain http-command 'quorum?transitive=true'`
 
@@ -998,7 +998,7 @@ Fields are:
 * `distance` : how far that node is from the root node (ie. how many quorum set hops)
 * `heard` : the latest ledger sequence number that this node voted at
 * `qset` : the node's quorum set
-* `status` : one of `behind|tracking|ahead` (compared to the root node) or `missing|unknown` (when there are no recent SCP messages for that node)
+* `status` : one of `behind|tracking|ahead` (compared to the root node) or `missing|unknown` (when there are no recent pogcvm messages for that node)
 * `value_id` : a unique ID for what the node is voting for (allows to quickly tell if nodes are voting for the same thing)
 * `value` : what the node is voting for
 
@@ -1029,7 +1029,7 @@ We recommend performing the following steps in order (repeat sequentially as nee
 
 The network itself has network wide settings that can be updated.
 
-This is performed by validators voting for and agreeing to new values the same way than consensus is reached for transaction sets, etc.
+This is performed by validators voting for and agreeing to new values the same way than validation is reached for transaction sets, etc.
 
 A node can be configured to vote for upgrades using the `upgrades` endpoint . see [`commands.md`](commands.md) for more information.
 
@@ -1047,7 +1047,7 @@ is passed the `upgradetime` by more than 12 hours, the upgrade will be ignored
 
 When a validator is armed to change network values, the output of `info` will contain information about the vote.
 
-For a new value to be adopted, the same level of consensus between nodes needs to be reached as for transaction sets.
+For a new value to be adopted, the same level of validation between nodes needs to be reached as for transaction sets.
 
 ### Important notes on network wide settings
 
@@ -1060,7 +1060,7 @@ validators as well as non validating nodes:
 
 An improper plan may cause issues such as:
 
-  * nodes missing consensus (aka "getting stuck"), and having to use history to rejoin
+  * nodes missing validation (aka "getting stuck"), and having to use history to rejoin
   * network reconfiguration taking effect at a non deterministic time (causing fees to change ahead of schedule for example)
 
 For more information look at [`docs/versioning.md`](../versioning.md).

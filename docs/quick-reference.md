@@ -112,11 +112,11 @@ to disable that if that's not what you want to do!
 By default the offline `catchup` command will trust and replay whatever it downloads from an
 archive. If the archive contents are malformed or tampered with, or corrupted in transit over an
 insecure connection, this will only be discovered after catchup is complete, when the node tries to
-join a network and acquire consensus. Until then, the node risks being exposed to (and replaying)
+join a network and acquire validation. Until then, the node risks being exposed to (and replaying)
 malformed input from the archive.
 
 In order to mitigate this risk, POGchain can emit a "reference file" full of trusted hashes for
-the ledgers of checkpoints, anchored in an SCP consensus ledger value observed on the network it is
+the ledgers of checkpoints, anchored in an pogcvm validation ledger value observed on the network it is
 configured to trust.
 
 This reference file can then be reused by running `catchup` with the `--trusted-checkpoint-hashes`
@@ -173,7 +173,7 @@ A stateless and meta-streaming node can additionally be configured with
 delay emitting meta for a ledger `<N>` until the _next_ ledger, `<N+1>`, closes.
 The idea is that if a node suffers local corruption in a ledger because of a
 software bug or hardware fault, it will be unable to close the _next_ ledger
-because it won't be able to reach consensus with other nodes on the input state
+because it won't be able to reach validation with other nodes on the input state
 of the next ledger. Therefore, the meta for the corrupted ledger will never be
 emitted.  With `EXPERIMENTAL_PRECAUTION_DELAY_META` set to `false`, a local
 corruption bug could cause a node to emit meta that is inconsistent with that of
@@ -183,7 +183,7 @@ result of a transaction will have to wait for an extra ledger close duration.
 
 During catchup from history archives, a stateless node will emit meta for any
 historical ledger without delay, even if `EXPERIMENTAL_PRECAUTION_DELAY_META` is
-`true`, because the ledger's results are already part of the validated consensus
+`true`, because the ledger's results are already part of the validated validation
 history.
 
 #### Publish backlog

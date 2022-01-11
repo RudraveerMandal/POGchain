@@ -327,7 +327,7 @@ TransactionFrame::isTooEarly(LedgerTxnHeader const& header,
                          : mEnvelope.v1().tx.timeBounds;
     if (tb)
     {
-        uint64 closeTime = header.current().scpValue.closeTime;
+        uint64 closeTime = header.current().pogcvmValue.closeTime;
         return tb->minTime &&
                (tb->minTime > (closeTime + lowerBoundCloseTimeOffset));
     }
@@ -343,10 +343,10 @@ TransactionFrame::isTooLate(LedgerTxnHeader const& header,
                          : mEnvelope.v1().tx.timeBounds;
     if (tb)
     {
-        // Prior to consensus, we can pass in an upper bound estimate on when we
+        // Prior to validation, we can pass in an upper bound estimate on when we
         // expect the ledger to close so we don't accept transactions that will
         // expire by the time they are applied
-        uint64 closeTime = header.current().scpValue.closeTime;
+        uint64 closeTime = header.current().pogcvmValue.closeTime;
         return tb->maxTime &&
                (tb->maxTime < (closeTime + upperBoundCloseTimeOffset));
     }

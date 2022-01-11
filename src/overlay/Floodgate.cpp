@@ -69,7 +69,7 @@ Floodgate::addRecord(POGchainMessage const& msg, Peer::pointer peer, Hash& index
     if (result == mFloodMap.end())
     { // we have never seen this message
         mFloodMap[index] = std::make_shared<FloodRecord>(
-            msg, mApp.getHerder().trackingConsensusLedgerIndex(), peer);
+            msg, mApp.getHerder().trackingvalidationLedgerIndex(), peer);
         mFloodMapSize.set_count(mFloodMap.size());
         TracyPlot("overlay.memory.flood-known",
                   static_cast<int64_t>(mFloodMap.size()));
@@ -98,7 +98,7 @@ Floodgate::broadcast(POGchainMessage const& msg, bool force)
     if (result == mFloodMap.end() || force)
     { // no one has sent us this message / start from scratch
         fr = std::make_shared<FloodRecord>(
-            msg, mApp.getHerder().trackingConsensusLedgerIndex(),
+            msg, mApp.getHerder().trackingvalidationLedgerIndex(),
             Peer::pointer());
         mFloodMap[index] = fr;
         mFloodMapSize.set_count(mFloodMap.size());

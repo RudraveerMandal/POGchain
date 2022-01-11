@@ -14,7 +14,7 @@ See the TransactionFrame class for the implementation.
 The network charges a fee for each transaction - right now the fee is just 
 proportional to the number of operations inside it. See `TransactionFrame::getMinFee` for the actual implementation.
 
-The base fee (multiplier) is decided during consensus; the desired base fee for 
+The base fee (multiplier) is decided during validation; the desired base fee for 
 each instance is defined in their configuration file.
 
 ## Sequence Number
@@ -61,7 +61,7 @@ transaction; therefore this is really a best effort implementation specific.
 
 ## Applying a transaction
 
-When SCP externalizes the transaction set to apply to the last closed ledger:
+When pogcvm externalizes the transaction set to apply to the last closed ledger:
 1. the Source accounts for all transactions are charged a fee
 2. transactions are applied one by one, checking and updating the account's
    sequence number.

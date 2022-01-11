@@ -5,7 +5,7 @@
 // of this distribution or at http://www.apache.org/licenses/LICENSE-2.0
 
 #include "herder/Herder.h"
-#include "herder/HerderSCPDriver.h"
+#include "herder/HerderpogcvmDriver.h"
 #include "herder/PendingEnvelopes.h"
 #include "herder/TransactionQueue.h"
 #include "herder/Upgrades.h"
@@ -27,7 +27,7 @@ namespace POGchain
 {
 class Application;
 class LedgerManager;
-class HerderSCPDriver;
+class HerderpogcvmDriver;
 
 /*
  * Is in charge of receiving transactions from the network.
@@ -35,26 +35,26 @@ class HerderSCPDriver;
 class HerderImpl : public Herder
 {
   public:
-    struct ConsensusData
+    struct validationData
     {
-        uint64_t mConsensusIndex{0};
-        TimePoint mConsensusCloseTime{0};
+        uint64_t mvalidationIndex{0};
+        TimePoint mvalidationCloseTime{0};
     };
 
-    void setTrackingSCPState(uint64_t index, POGchainValue const& value,
+    void setTrackingpogcvmState(uint64_t index, POGchainValue const& value,
                              bool isTrackingNetwork) override;
 
     // returns the latest known ledger from the network, requires Herder to be
     // in fully booted state
-    uint32 trackingConsensusLedgerIndex() const override;
+    uint32 trackingvalidationLedgerIndex() const override;
 
-    TimePoint trackingConsensusCloseTime() const;
+    TimePoint trackingvalidationCloseTime() const;
 
     // the ledger index that we expect to externalize next
     uint32
-    nextConsensusLedgerIndex() const
+    nextvalidationLedgerIndex() const
     {
-        return trackingConsensusLedgerIndex() + 1;
+        return trackingvalidationLedgerIndex() + 1;
     }
 
     void lostSync();
@@ -75,11 +75,11 @@ class HerderImpl : public Herder
 
     void lastClosedLedgerIncreased() override;
 
-    SCP& getSCP();
-    HerderSCPDriver&
-    getHerderSCPDriver()
+    pogcvm& getpogcvm();
+    HerderpogcvmDriver&
+    getHerderpogcvmDriver()
     {
-        return mHerderSCPDriver;
+        return mHerderpogcvmDriver;
     }
 
     bool
@@ -91,15 +91,15 @@ class HerderImpl : public Herder
     void processExternalized(uint64 slotIndex, POGchainValue const& value);
     void valueExternalized(uint64 slotIndex, POGchainValue const& value,
                            bool isLatestSlot);
-    void emitEnvelope(SCPEnvelope const& envelope);
+    void emitEnvelope(pogcvmEnvelope const& envelope);
 
     TransactionQueue::AddResult
     recvTransaction(TransactionFrameBasePtr tx) override;
 
-    EnvelopeStatus recvSCPEnvelope(SCPEnvelope const& envelope) override;
+    EnvelopeStatus recvpogcvmEnvelope(pogcvmEnvelope const& envelope) override;
 #ifdef BUILD_TESTS
-    EnvelopeStatus recvSCPEnvelope(SCPEnvelope const& envelope,
-                                   const SCPQuorumSet& qset,
+    EnvelopeStatus recvpogcvmEnvelope(pogcvmEnvelope const& envelope,
+                                   const pogcvmQuorumSet& qset,
                                    TxSetFrame txset) override;
 
     void externalizeValue(std::shared_ptr<TxSetFrame> txSet, uint32_t ledgerSeq,
@@ -115,30 +115,30 @@ class HerderImpl : public Herder
 
     uint32_t mTriggerNextLedgerSeq{0};
 #endif
-    void sendSCPStateToPeer(uint32 ledgerSeq, Peer::pointer peer) override;
+    void sendpogcvmStateToPeer(uint32 ledgerSeq, Peer::pointer peer) override;
 
-    bool recvSCPQuorumSet(Hash const& hash, const SCPQuorumSet& qset) override;
+    bool recvpogcvmQuorumSet(Hash const& hash, const pogcvmQuorumSet& qset) override;
     bool recvTxSet(Hash const& hash, const TxSetFrame& txset) override;
     void peerDoesntHave(MessageType type, uint256 const& itemID,
                         Peer::pointer peer) override;
     TxSetFramePtr getTxSet(Hash const& hash) override;
-    SCPQuorumSetPtr getQSet(Hash const& qSetHash) override;
+    pogcvmQuorumSetPtr getQSet(Hash const& qSetHash) override;
 
-    void processSCPQueue();
+    void processpogcvmQueue();
 
     uint32 getMinLedgerSeqToAskPeers() const override;
 
     SequenceNumber getMaxSeqInPendingTxs(AccountID const&) override;
 
     void triggerNextLedger(uint32_t ledgerSeqToTrigger,
-                           bool checkTrackingSCP) override;
+                           bool checkTrackingpogcvm) override;
 
     void setInSyncAndTriggerNextLedger() override;
 
     void setUpgrades(Upgrades::UpgradeParameters const& upgrades) override;
     std::string getUpgradesJson() override;
 
-    void forceSCPStateIntoSyncWithLastClosedLedger() override;
+    void forcepogcvmStateIntoSyncWithLastClosedLedger() override;
 
     bool resolveNodeID(std::string const& s, PublicKey& retKey) override;
 
@@ -164,18 +164,18 @@ class HerderImpl : public Herder
 #endif
 
     // helper function to verify envelopes are signed
-    bool verifyEnvelope(SCPEnvelope const& envelope);
+    bool verifyEnvelope(pogcvmEnvelope const& envelope);
     // helper function to sign envelopes
-    void signEnvelope(SecretKey const& s, SCPEnvelope& envelope);
+    void signEnvelope(SecretKey const& s, pogcvmEnvelope& envelope);
 
-    // helper function to verify SCPValues are signed
+    // helper function to verify pogcvmValues are signed
     bool verifyPOGchainValueSignature(POGchainValue const& sv);
 
   private:
     // return true if values referenced by envelope have a valid close time:
     // * it's within the allowed range (using lcl if possible)
     // * it's recent enough (if `enforceRecent` is set)
-    bool checkCloseTime(SCPEnvelope const& envelope, bool enforceRecent);
+    bool checkCloseTime(pogcvmEnvelope const& envelope, bool enforceRecent);
 
     // Given a candidate close time, determine an offset needed to make it
     // valid (at current system time). Returns 0 if ct is already valid
@@ -187,10 +187,10 @@ class HerderImpl : public Herder
 
     void startOutOfSyncTimer();
     void outOfSyncRecovery();
-    void broadcast(SCPEnvelope const& e);
+    void broadcast(pogcvmEnvelope const& e);
 
-    void processSCPQueueUpToIndex(uint64 slotIndex);
-    void safelyProcessSCPQueue(bool synchronous);
+    void processpogcvmQueueUpToIndex(uint64 slotIndex);
+    void safelyProcesspogcvmQueue(bool synchronous);
     void newSlotExternalized(bool synchronous, POGchainValue const& value);
 
     TransactionQueue mTransactionQueue;
@@ -200,27 +200,27 @@ class HerderImpl : public Herder
 
     PendingEnvelopes mPendingEnvelopes;
     Upgrades mUpgrades;
-    HerderSCPDriver mHerderSCPDriver;
+    HerderpogcvmDriver mHerderpogcvmDriver;
 
     void herderOutOfSync();
 
-    // attempt to retrieve additional SCP messages from peers
-    void getMoreSCPState();
+    // attempt to retrieve additional pogcvm messages from peers
+    void getMorepogcvmState();
 
     // last slot that was persisted into the database
     // keep track of all messages for MAX_SLOTS_TO_REMEMBER slots
     uint64 mLastSlotSaved;
 
-    // timer that detects that we're stuck on an SCP slot
+    // timer that detects that we're stuck on an pogcvm slot
     VirtualTimer mTrackingTimer;
 
     // tracks the last time externalize was called
     VirtualClock::time_point mLastExternalize;
 
-    // saves the SCP messages that the instance sent out last
-    void persistSCPState(uint64 slot);
-    // restores SCP state based on the last messages saved on disk
-    void restoreSCPState();
+    // saves the pogcvm messages that the instance sent out last
+    void persistpogcvmState(uint64 slot);
+    // restores pogcvm state based on the last messages saved on disk
+    void restorepogcvmState();
 
     // saves upgrade parameters
     void persistUpgrades();
@@ -238,7 +238,7 @@ class HerderImpl : public Herder
     Application& mApp;
     LedgerManager& mLedgerManager;
 
-    struct SCPMetrics
+    struct pogcvmMetrics
     {
         medida::Meter& mLostSync;
 
@@ -246,17 +246,17 @@ class HerderImpl : public Herder
         medida::Meter& mEnvelopeReceive;
 
         // Counters for things reached-through the
-        // SCP maps: Slots and Nodes
+        // pogcvm maps: Slots and Nodes
         medida::Counter& mCumulativeStatements;
 
         // envelope signature verification
         medida::Meter& mEnvelopeValidSig;
         medida::Meter& mEnvelopeInvalidSig;
 
-        SCPMetrics(Application& app);
+        pogcvmMetrics(Application& app);
     };
 
-    SCPMetrics mSCPMetrics;
+    pogcvmMetrics mpogcvmMetrics;
 
     // Check that the quorum map intersection state is up to date, and if not
     // run a background job that re-analyzes the current quorum map.
@@ -297,10 +297,10 @@ class HerderImpl : public Herder
     State mState;
     void setState(State st);
 
-    // Information about the most recent tracked SCP slot
+    // Information about the most recent tracked pogcvm slot
     // Set regardless of whether the local instance if fully in sync with the
     // network or not (Herder::State is used to properly track the state of
     // Herder) On startup, this variable is set to LCL
-    ConsensusData mTrackingSCP;
+    validationData mTrackingpogcvm;
 };
 }

@@ -5,7 +5,7 @@
 // of this distribution or at http://www.apache.org/licenses/LICENSE-2.0
 
 #include "lib/json/json-forwards.h"
-#include "scp/SCP.h"
+#include "pogcvm/pogcvm.h"
 #include <functional>
 #include <memory>
 #include <set>
@@ -24,9 +24,9 @@ class NominationProtocol
     ValueWrapperPtrSet mVotes;                                  // X
     ValueWrapperPtrSet mAccepted;                               // Y
     ValueWrapperPtrSet mCandidates;                             // Z
-    std::map<NodeID, SCPEnvelopeWrapperPtr> mLatestNominations; // N
+    std::map<NodeID, pogcvmEnvelopeWrapperPtr> mLatestNominations; // N
 
-    SCPEnvelopeWrapperPtr mLastEnvelope; // last envelope emitted by this node
+    pogcvmEnvelopeWrapperPtr mLastEnvelope; // last envelope emitted by this node
 
     // nodes from quorum set that have the highest priority this round
     std::set<NodeID> mRoundLeaders;
@@ -40,9 +40,9 @@ class NominationProtocol
     // the value from the previous slot
     Value mPreviousValue;
 
-    bool isNewerStatement(NodeID const& nodeID, SCPNomination const& st);
-    static bool isNewerStatement(SCPNomination const& oldst,
-                                 SCPNomination const& st);
+    bool isNewerStatement(NodeID const& nodeID, pogcvmNomination const& st);
+    static bool isNewerStatement(pogcvmNomination const& oldst,
+                                 pogcvmNomination const& st);
 
     // returns true if 'p' is a subset of 'v'
     // also sets 'notEqual' if p and v differ
@@ -50,20 +50,20 @@ class NominationProtocol
     static bool isSubsetHelper(xdr::xvector<Value> const& p,
                                xdr::xvector<Value> const& v, bool& notEqual);
 
-    SCPDriver::ValidationLevel validateValue(Value const& v);
+    pogcvmDriver::ValidationLevel validateValue(Value const& v);
     ValueWrapperPtr extractValidValue(Value const& value);
 
-    bool isSane(SCPStatement const& st);
+    bool isSane(pogcvmStatement const& st);
 
-    void recordEnvelope(SCPEnvelopeWrapperPtr env);
+    void recordEnvelope(pogcvmEnvelopeWrapperPtr env);
 
     void emitNomination();
 
     // returns true if v is in the accepted list from the statement
-    static bool acceptPredicate(Value const& v, SCPStatement const& st);
+    static bool acceptPredicate(Value const& v, pogcvmStatement const& st);
 
     // applies 'processor' to all values from the passed in nomination
-    static void applyAll(SCPNomination const& nom,
+    static void applyAll(pogcvmNomination const& nom,
                          std::function<void(Value const&)> processor);
 
     // updates the set of nodes that have priority over the others
@@ -76,21 +76,21 @@ class NominationProtocol
     // computes Gi(K, prevValue, mRoundNumber, value)
     uint64 hashValue(Value const& value);
 
-    uint64 getNodePriority(NodeID const& nodeID, SCPQuorumSet const& qset);
+    uint64 getNodePriority(NodeID const& nodeID, pogcvmQuorumSet const& qset);
 
     // returns the highest value that we don't have yet, that we should
     // vote for, extracted from a nomination.
     // returns nullptr if no new value was found
-    ValueWrapperPtr getNewValueFromNomination(SCPNomination const& nom);
+    ValueWrapperPtr getNewValueFromNomination(pogcvmNomination const& nom);
 
   public:
     NominationProtocol(Slot& slot);
 
-    SCP::EnvelopeState processEnvelope(SCPEnvelopeWrapperPtr envelope);
+    pogcvm::EnvelopeState processEnvelope(pogcvmEnvelopeWrapperPtr envelope);
 
-    static std::vector<Value> getStatementValues(SCPStatement const& st);
+    static std::vector<Value> getStatementValues(pogcvmStatement const& st);
 
-    // attempts to nominate a value for consensus
+    // attempts to nominate a value for validation
     bool nominate(ValueWrapperPtr value, Value const& previousValue,
                   bool timedout);
 
@@ -108,19 +108,19 @@ class NominationProtocol
 
     Json::Value getJsonInfo();
 
-    SCPEnvelope const*
+    pogcvmEnvelope const*
     getLastMessageSend() const
     {
         return mLastEnvelope ? &mLastEnvelope->getEnvelope() : nullptr;
     }
 
-    void setStateFromEnvelope(SCPEnvelopeWrapperPtr e);
+    void setStateFromEnvelope(pogcvmEnvelopeWrapperPtr e);
 
-    bool processCurrentState(std::function<bool(SCPEnvelope const&)> const& f,
+    bool processCurrentState(std::function<bool(pogcvmEnvelope const&)> const& f,
                              bool forceSelf) const;
 
     // returns the latest message from a node
     // or nullptr if not found
-    SCPEnvelope const* getLatestMessage(NodeID const& id) const;
+    pogcvmEnvelope const* getLatestMessage(NodeID const& id) const;
 };
 }

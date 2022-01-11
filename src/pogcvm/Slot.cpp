@@ -7,8 +7,8 @@
 #include "crypto/Hex.h"
 #include "lib/json/json.h"
 #include "main/ErrorMessages.h"
-#include "scp/LocalNode.h"
-#include "scp/QuorumSetUtils.h"
+#include "pogcvm/LocalNode.h"
+#include "pogcvm/QuorumSetUtils.h"
 #include "util/GlobalChecks.h"
 #include "util/Logging.h"
 #include "util/XDROperators.h"
@@ -20,12 +20,12 @@ namespace POGchain
 {
 using namespace std::placeholders;
 
-Slot::Slot(uint64 slotIndex, SCP& scp)
+Slot::Slot(uint64 slotIndex, pogcvm& pogcvm)
     : mSlotIndex(slotIndex)
-    , mSCP(scp)
+    , mpogcvm(pogcvm)
     , mBallotProtocol(*this)
     , mNominationProtocol(*this)
-    , mFullyValidated(scp.getLocalNode()->isValidator())
+    , mFullyValidated(pogcvm.getLocalNode()->isValidator())
     , mGotVBlocking(false)
 {
 }
@@ -36,13 +36,13 @@ Slot::getLatestCompositeCandidate()
     return mNominationProtocol.getLatestCompositeCandidate();
 }
 
-std::vector<SCPEnvelope>
+std::vector<pogcvmEnvelope>
 Slot::getLatestMessagesSend() const
 {
-    std::vector<SCPEnvelope> res;
+    std::vector<pogcvmEnvelope> res;
     if (mFullyValidated)
     {
-        SCPEnvelope const* e;
+        pogcvmEnvelope const* e;
         e = mNominationProtocol.getLastMessageSend();
         if (e)
         {
@@ -58,15 +58,15 @@ Slot::getLatestMessagesSend() const
 }
 
 void
-Slot::setStateFromEnvelope(SCPEnvelopeWrapperPtr env)
+Slot::setStateFromEnvelope(pogcvmEnvelopeWrapperPtr env)
 {
     auto& e = env->getEnvelope();
-    if (e.statement.nodeID == getSCP().getLocalNodeID() &&
+    if (e.statement.nodeID == getpogcvm().getLocalNodeID() &&
         e.statement.slotIndex == mSlotIndex)
     {
         auto prev = getLatestMessage(e.statement.nodeID) != nullptr;
 
-        if (e.statement.pledges.type() == SCPStatementType::SCP_ST_NOMINATE)
+        if (e.statement.pledges.type() == pogcvmStatementType::pogcvm_ST_NOMINATE)
         {
             mNominationProtocol.setStateFromEnvelope(env);
         }
@@ -82,20 +82,20 @@ Slot::setStateFromEnvelope(SCPEnvelopeWrapperPtr env)
     }
     else
     {
-        CLOG_TRACE(SCP, "Slot::setStateFromEnvelope invalid envelope i: {} {}",
-                   getSlotIndex(), mSCP.envToStr(e));
+        CLOG_TRACE(pogcvm, "Slot::setStateFromEnvelope invalid envelope i: {} {}",
+                   getSlotIndex(), mpogcvm.envToStr(e));
     }
 }
 
 void
-Slot::processCurrentState(std::function<bool(SCPEnvelope const&)> const& f,
+Slot::processCurrentState(std::function<bool(pogcvmEnvelope const&)> const& f,
                           bool forceSelf) const
 {
     mNominationProtocol.processCurrentState(f, forceSelf) &&
         mBallotProtocol.processCurrentState(f, forceSelf);
 }
 
-SCPEnvelope const*
+pogcvmEnvelope const*
 Slot::getLatestMessage(NodeID const& id) const
 {
     auto m = mBallotProtocol.getLatestMessage(id);
@@ -106,38 +106,38 @@ Slot::getLatestMessage(NodeID const& id) const
     return m;
 }
 
-std::vector<SCPEnvelope>
+std::vector<pogcvmEnvelope>
 Slot::getExternalizingState() const
 {
     return mBallotProtocol.getExternalizingState();
 }
 
 void
-Slot::recordStatement(SCPStatement const& st)
+Slot::recordStatement(pogcvmStatement const& st)
 {
     mStatementsHistory.emplace_back(
         HistoricalStatement{std::time(nullptr), st, mFullyValidated});
-    CLOG_DEBUG(SCP, "new statement:  i: {} st: {} validated: {}",
-               getSlotIndex(), mSCP.envToStr(st, false),
+    CLOG_DEBUG(pogcvm, "new statement:  i: {} st: {} validated: {}",
+               getSlotIndex(), mpogcvm.envToStr(st, false),
                (mFullyValidated ? "true" : "false"));
 }
 
-SCP::EnvelopeState
-Slot::processEnvelope(SCPEnvelopeWrapperPtr envelope, bool self)
+pogcvm::EnvelopeState
+Slot::processEnvelope(pogcvmEnvelopeWrapperPtr envelope, bool self)
 {
     dbgAssert(envelope->getStatement().slotIndex == mSlotIndex);
 
-    CLOG_TRACE(SCP, "Slot::processEnvelope i: {} {}", getSlotIndex(),
-               mSCP.envToStr(envelope->getEnvelope()));
+    CLOG_TRACE(pogcvm, "Slot::processEnvelope i: {} {}", getSlotIndex(),
+               mpogcvm.envToStr(envelope->getEnvelope()));
 
-    SCP::EnvelopeState res;
+    pogcvm::EnvelopeState res;
 
     try
     {
         auto& st = envelope->getStatement();
         auto prev = getLatestMessage(st.nodeID) != nullptr;
 
-        if (st.pledges.type() == SCPStatementType::SCP_ST_NOMINATE)
+        if (st.pledges.type() == pogcvmStatementType::pogcvm_ST_NOMINATE)
         {
             res = mNominationProtocol.processEnvelope(envelope);
         }
@@ -146,19 +146,19 @@ Slot::processEnvelope(SCPEnvelopeWrapperPtr envelope, bool self)
             res = mBallotProtocol.processEnvelope(envelope, self);
         }
 
-        if (!prev && res == SCP::VALID)
+        if (!prev && res == pogcvm::VALID)
         {
             maybeSetGotVBlocking();
         }
     }
     catch (...)
     {
-        CLOG_FATAL(SCP, "SCP context ({}): ",
-                   mSCP.getDriver().toShortString(mSCP.getLocalNodeID()));
-        CLOG_FATAL(SCP, "{}", getJsonInfo().toStyledString());
-        CLOG_FATAL(SCP, "Exception processing SCP messages at {}, envelope: {}",
-                   mSlotIndex, mSCP.envToStr(envelope->getEnvelope()));
-        CLOG_FATAL(SCP, "{}", REPORT_INTERNAL_BUG);
+        CLOG_FATAL(pogcvm, "pogcvm context ({}): ",
+                   mpogcvm.getDriver().toShortString(mpogcvm.getLocalNodeID()));
+        CLOG_FATAL(pogcvm, "{}", getJsonInfo().toStyledString());
+        CLOG_FATAL(pogcvm, "Exception processing pogcvm messages at {}, envelope: {}",
+                   mSlotIndex, mpogcvm.envToStr(envelope->getEnvelope()));
+        CLOG_FATAL(pogcvm, "{}", REPORT_INTERNAL_BUG);
 
         throw;
     }
@@ -208,37 +208,37 @@ Slot::setFullyValidated(bool fullyValidated)
     mFullyValidated = fullyValidated;
 }
 
-SCPEnvelope
-Slot::createEnvelope(SCPStatement const& statement)
+pogcvmEnvelope
+Slot::createEnvelope(pogcvmStatement const& statement)
 {
-    SCPEnvelope envelope;
+    pogcvmEnvelope envelope;
 
     envelope.statement = statement;
     auto& mySt = envelope.statement;
-    mySt.nodeID = getSCP().getLocalNodeID();
+    mySt.nodeID = getpogcvm().getLocalNodeID();
     mySt.slotIndex = getSlotIndex();
 
-    mSCP.getDriver().signEnvelope(envelope);
+    mpogcvm.getDriver().signEnvelope(envelope);
 
     return envelope;
 }
 
 Hash
-Slot::getCompanionQuorumSetHashFromStatement(SCPStatement const& st)
+Slot::getCompanionQuorumSetHashFromStatement(pogcvmStatement const& st)
 {
     Hash h;
     switch (st.pledges.type())
     {
-    case SCP_ST_PREPARE:
+    case pogcvm_ST_PREPARE:
         h = st.pledges.prepare().quorumSetHash;
         break;
-    case SCP_ST_CONFIRM:
+    case pogcvm_ST_CONFIRM:
         h = st.pledges.confirm().quorumSetHash;
         break;
-    case SCP_ST_EXTERNALIZE:
+    case pogcvm_ST_EXTERNALIZE:
         h = st.pledges.externalize().commitQuorumSetHash;
         break;
-    case SCP_ST_NOMINATE:
+    case pogcvm_ST_NOMINATE:
         h = st.pledges.nominate().quorumSetHash;
         break;
     default:
@@ -248,10 +248,10 @@ Slot::getCompanionQuorumSetHashFromStatement(SCPStatement const& st)
 }
 
 std::vector<Value>
-Slot::getStatementValues(SCPStatement const& st)
+Slot::getStatementValues(pogcvmStatement const& st)
 {
     std::vector<Value> res;
-    if (st.pledges.type() == SCP_ST_NOMINATE)
+    if (st.pledges.type() == pogcvm_ST_NOMINATE)
     {
         res = NominationProtocol::getStatementValues(st);
     }
@@ -267,28 +267,28 @@ Slot::getStatementValues(SCPStatement const& st)
     return res;
 }
 
-SCPQuorumSetPtr
-Slot::getQuorumSetFromStatement(SCPStatement const& st)
+pogcvmQuorumSetPtr
+Slot::getQuorumSetFromStatement(pogcvmStatement const& st)
 {
-    SCPQuorumSetPtr res;
-    SCPStatementType t = st.pledges.type();
+    pogcvmQuorumSetPtr res;
+    pogcvmStatementType t = st.pledges.type();
 
-    if (t == SCP_ST_EXTERNALIZE)
+    if (t == pogcvm_ST_EXTERNALIZE)
     {
         res = LocalNode::getSingletonQSet(st.nodeID);
     }
     else
     {
         Hash h;
-        if (t == SCP_ST_PREPARE)
+        if (t == pogcvm_ST_PREPARE)
         {
             h = st.pledges.prepare().quorumSetHash;
         }
-        else if (t == SCP_ST_CONFIRM)
+        else if (t == pogcvm_ST_CONFIRM)
         {
             h = st.pledges.confirm().quorumSetHash;
         }
-        else if (t == SCP_ST_NOMINATE)
+        else if (t == pogcvm_ST_NOMINATE)
         {
             h = st.pledges.nominate().quorumSetHash;
         }
@@ -296,7 +296,7 @@ Slot::getQuorumSetFromStatement(SCPStatement const& st)
         {
             dbgAbort();
         }
-        res = getSCPDriver().getQSet(h);
+        res = getpogcvmDriver().getQSet(h);
     }
     return res;
 }
@@ -305,19 +305,19 @@ Json::Value
 Slot::getJsonInfo(bool fullKeys)
 {
     Json::Value ret;
-    std::map<Hash, SCPQuorumSetPtr> qSetsUsed;
+    std::map<Hash, pogcvmQuorumSetPtr> qSetsUsed;
 
     int count = 0;
     for (auto const& item : mStatementsHistory)
     {
         Json::Value& v = ret["statements"][count++];
         v.append((Json::UInt64)item.mWhen);
-        v.append(mSCP.envToStr(item.mStatement, fullKeys));
+        v.append(mpogcvm.envToStr(item.mStatement, fullKeys));
         v.append(item.mValidated);
 
         Hash const& qSetHash =
             getCompanionQuorumSetHashFromStatement(item.mStatement);
-        auto qSet = getSCPDriver().getQSet(qSetHash);
+        auto qSet = getpogcvmDriver().getQSet(qSetHash);
         if (qSet)
         {
             qSetsUsed.insert(std::make_pair(qSetHash, qSet));
@@ -350,7 +350,7 @@ Slot::getJsonQuorumInfo(NodeID const& id, bool summary, bool fullKeys)
 
 bool
 Slot::federatedAccept(StatementPredicate voted, StatementPredicate accepted,
-                      std::map<NodeID, SCPEnvelopeWrapperPtr> const& envs)
+                      std::map<NodeID, pogcvmEnvelopeWrapperPtr> const& envs)
 {
     // Checks if the nodes that claimed to accept the statement form a
     // v-blocking set
@@ -361,7 +361,7 @@ Slot::federatedAccept(StatementPredicate voted, StatementPredicate accepted,
 
     // Checks if the set of nodes that accepted or voted for it form a quorum
 
-    auto ratifyFilter = [&](SCPStatement const& st) {
+    auto ratifyFilter = [&](pogcvmStatement const& st) {
         bool res;
         res = accepted(st) || voted(st);
         return res;
@@ -380,7 +380,7 @@ Slot::federatedAccept(StatementPredicate voted, StatementPredicate accepted,
 
 bool
 Slot::federatedRatify(StatementPredicate voted,
-                      std::map<NodeID, SCPEnvelopeWrapperPtr> const& envs)
+                      std::map<NodeID, pogcvmEnvelopeWrapperPtr> const& envs)
 {
     return LocalNode::isQuorum(
         getLocalNode()->getQuorumSet(), envs,
@@ -390,15 +390,15 @@ Slot::federatedRatify(StatementPredicate voted,
 std::shared_ptr<LocalNode>
 Slot::getLocalNode()
 {
-    return mSCP.getLocalNode();
+    return mpogcvm.getLocalNode();
 }
 
-std::vector<SCPEnvelope>
+std::vector<pogcvmEnvelope>
 Slot::getEntireCurrentState()
 {
-    std::vector<SCPEnvelope> res;
+    std::vector<pogcvmEnvelope> res;
     processCurrentState(
-        [&](SCPEnvelope const& e) {
+        [&](pogcvmEnvelope const& e) {
             res.emplace_back(e);
             return true;
         },
@@ -431,7 +431,7 @@ Slot::maybeSetGotVBlocking()
 
     if (mGotVBlocking)
     {
-        CLOG_TRACE(SCP, "Got v-blocking for {}", mSlotIndex);
+        CLOG_TRACE(pogcvm, "Got v-blocking for {}", mSlotIndex);
     }
 }
 }

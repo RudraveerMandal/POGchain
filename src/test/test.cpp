@@ -208,7 +208,7 @@ getTestConfig(int instanceNumber, Config::TestDbMode mode)
         // and connected loopback sockets), no external connections are
         // attempted.
         thisConfig.RUN_STANDALONE = true;
-        thisConfig.FORCE_SCP = true;
+        thisConfig.FORCE_pogcvm = true;
 
         thisConfig.MANUAL_CLOSE = true;
 
@@ -219,7 +219,7 @@ getTestConfig(int instanceNumber, Config::TestDbMode mode)
         thisConfig.HTTP_PORT = static_cast<unsigned short>(
             DEFAULT_PEER_PORT + instanceNumber * 2 + 1);
 
-        // We set a secret key by default as FORCE_SCP is true by
+        // We set a secret key by default as FORCE_pogcvm is true by
         // default and we do need a NODE_SEED to start a new network.
         //
         // Because test configs are built lazily and cached / persist across

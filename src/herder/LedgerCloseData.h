@@ -15,7 +15,7 @@ namespace POGchain
 
 /**
  * Helper class that describes a single ledger-to-close -- a set of transactions
- * and auxiliary values -- as decided by the Herder (and ultimately: SCP). This
+ * and auxiliary values -- as decided by the Herder (and ultimately: pogcvm). This
  * does not include the effects of _performing_ any transactions, merely the
  * values that the network has agreed _to apply_ to the current ledger,
  * atomically, in order to produce the next ledger.

@@ -1701,7 +1701,7 @@ TEST_CASE("txenvelope", "[tx][envelope]")
 
                         auto closeTime = app->getLedgerManager()
                                              .getLastClosedLedgerHeader()
-                                             .header.scpValue.closeTime;
+                                             .header.pogcvmValue.closeTime;
 
                         auto offsetTest = [&](bool pushTime) {
                             if (pushTime)

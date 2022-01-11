@@ -179,7 +179,7 @@ def run_survey(args):
             peer_list.append(peer["id"])
 
     graph.add_node(requests
-                   .get(url + "/scp?limit=0&fullkeys=true")
+                   .get(url + "/pogcvm?limit=0&fullkeys=true")
                    .json()
                    ["you"],
                    version=requests.get(url + "/info").json()["info"]["build"],

@@ -26,12 +26,12 @@ TEST_CASE("TCPPeer can communicate", "[overlay][acceptance]")
     auto v10SecretKey = SecretKey::fromSeed(sha256("v10"));
     auto v11SecretKey = SecretKey::fromSeed(sha256("v11"));
 
-    SCPQuorumSet n0_qset;
+    pogcvmQuorumSet n0_qset;
     n0_qset.threshold = 1;
     n0_qset.validators.push_back(v10SecretKey.getPublicKey());
     auto n0 = s->addNode(v10SecretKey, n0_qset);
 
-    SCPQuorumSet n1_qset;
+    pogcvmQuorumSet n1_qset;
     n1_qset.threshold = 1;
     n1_qset.validators.push_back(v11SecretKey.getPublicKey());
     auto n1 = s->addNode(v11SecretKey, n1_qset);

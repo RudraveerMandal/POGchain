@@ -46,7 +46,7 @@ ledger.age.closed                        | bucket    | time between ledgers
 ledger.age.current-seconds               | counter   | gap between last close ledger time and current time
 ledger.catchup.duration                  | timer     | time between entering LM_CATCHING_UP_STATE and entering LM_SYNCED_STATE
 ledger.invariant.failure                 | counter   | number of times invariants failed
-ledger.ledger.close                      | timer     | time to close a ledger (excluding consensus)
+ledger.ledger.close                      | timer     | time to close a ledger (excluding validation)
 ledger.memory.queued-ledgers             | counter   | number of ledgers queued in memory for replay
 ledger.metastream.write                  | timer     | time spent writing data into meta-stream
 ledger.operation.apply                   | timer     | time applying an operation
@@ -102,25 +102,25 @@ overlay.send.survey-request              | meter     | sent survey request
 overlay.send.survey-response             | meter     | sent survey response
 process.action.queue                     | counter   | number of items waiting in internal action-queue
 process.action.overloaded                | counter   | 0-or-1 value indicating action-queue overloading
-scp.envelope.emit                        | meter     | SCP message sent
-scp.envelope.invalidsig                  | meter     | envelope failed signature verification
-scp.envelope.receive                     | meter     | SCP message received
-scp.envelope.sign                        | meter     | envelope signed
-scp.envelope.validsig                    | meter     | envelope signature verified
-scp.fetch.envelope                       | timer     | time to complete fetching of an envelope
-scp.memory.cumulative-statements         | counter   | number of known SCP statements known
-scp.nomination.combinecandidates         | meter     | number of candidates per call
-scp.pending.discarded                    | counter   | number of discarded envelopes
-scp.pending.fetching                     | counter   | number of incomplete envelopes
-scp.pending.processed                    | counter   | number of already processed envelopes
-scp.pending.ready                        | counter   | number of envelopes ready to process
-scp.sync.lost                            | meter     | validator lost sync
-scp.timeout.nominate                     | meter     | timeouts in nomination
-scp.timeout.prepare                      | meter     | timeouts in ballot protocol
-scp.timing.nominated                     | timer     | time spent in nomination
-scp.timing.externalized                  | timer     | time spent in ballot protocol
-scp.timing.first-to-self-externalize-lag | timer     | delay between first externalize message and local node externalizing
-scp.timing.self-to-others-externalize-lag| timer     | delay between local node externalizing and later externalize messages from other nodes
-scp.value.invalid                        | meter     | SCP value is invalid
-scp.value.valid                          | meter     | SCP value is valid
+pogcvm.envelope.emit                        | meter     | pogcvm message sent
+pogcvm.envelope.invalidsig                  | meter     | envelope failed signature verification
+pogcvm.envelope.receive                     | meter     | pogcvm message received
+pogcvm.envelope.sign                        | meter     | envelope signed
+pogcvm.envelope.validsig                    | meter     | envelope signature verified
+pogcvm.fetch.envelope                       | timer     | time to complete fetching of an envelope
+pogcvm.memory.cumulative-statements         | counter   | number of known pogcvm statements known
+pogcvm.nomination.combinecandidates         | meter     | number of candidates per call
+pogcvm.pending.discarded                    | counter   | number of discarded envelopes
+pogcvm.pending.fetching                     | counter   | number of incomplete envelopes
+pogcvm.pending.processed                    | counter   | number of already processed envelopes
+pogcvm.pending.ready                        | counter   | number of envelopes ready to process
+pogcvm.sync.lost                            | meter     | validator lost sync
+pogcvm.timeout.nominate                     | meter     | timeouts in nomination
+pogcvm.timeout.prepare                      | meter     | timeouts in ballot protocol
+pogcvm.timing.nominated                     | timer     | time spent in nomination
+pogcvm.timing.externalized                  | timer     | time spent in ballot protocol
+pogcvm.timing.first-to-self-externalize-lag | timer     | delay between first externalize message and local node externalizing
+pogcvm.timing.self-to-others-externalize-lag| timer     | delay between local node externalizing and later externalize messages from other nodes
+pogcvm.value.invalid                        | meter     | pogcvm value is invalid
+pogcvm.value.valid                          | meter     | pogcvm value is valid
 

@@ -96,7 +96,7 @@ Steps (tested on Mac OS):
 5. Run `xcrun llvm-cov show ./src/POGchain -instr-profile=cov.profdata -format="html" > cov.html`
    * The resulting html file can be around ~45MB, so it can be difficult to navigate with a
    browser. You can use the `-ignore-filename-regex` option to remove files/directories that you aren't
-   interested in (ex. The following option excludes every directory specified `-ignore-filename-regex='.*lib[/\\].*|.*bucket[/\\].*|.*catchup[/\\].*|.*crypto[/\\].*|.*database[/\\].*|.*herder[/\\].*|.*history[/\\].*|.*historywork[/\\].*|.*overlay[/\\].*|.*xdr[/\\].*|.*sodium[/\\].*|.*work[/\\].*|.*test[/\\].*|.*scp[/\\].*|.*main[/\\].*|.*simulation[/\\].*|.*invariant[/\\].*|.*util[/\\].*'`)
+   interested in (ex. The following option excludes every directory specified `-ignore-filename-regex='.*lib[/\\].*|.*bucket[/\\].*|.*catchup[/\\].*|.*crypto[/\\].*|.*database[/\\].*|.*herder[/\\].*|.*history[/\\].*|.*historywork[/\\].*|.*overlay[/\\].*|.*xdr[/\\].*|.*sodium[/\\].*|.*work[/\\].*|.*test[/\\].*|.*pogcvm[/\\].*|.*main[/\\].*|.*simulation[/\\].*|.*invariant[/\\].*|.*util[/\\].*'`)
 
 
 ### Special configure flags for unreleased protocol versions

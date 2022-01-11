@@ -66,10 +66,10 @@ setHerderStateTo(FileTransferInfo const& ft, uint32_t ledger, Application& app)
         return false;
     }
 
-    app.getHerder().setTrackingSCPState(ledger, entry->header.scpValue,
+    app.getHerder().setTrackingpogcvmState(ledger, entry->header.pogcvmValue,
                                         /* isTrackingNetwork */ false);
     CLOG_INFO(History, "Herder state is set! tracking={}, closeTime={}", ledger,
-              entry->header.scpValue.closeTime);
+              entry->header.pogcvmValue.closeTime);
     return true;
 }
 
@@ -455,7 +455,7 @@ CatchupWork::runCatchupStep()
             // LCL
             auto cb = [ledgerSeq = catchupRange.last(),
                        &dir = *mDownloadDir](Application& app) {
-                if (app.getHerder().trackingConsensusLedgerIndex() >= ledgerSeq)
+                if (app.getHerder().trackingvalidationLedgerIndex() >= ledgerSeq)
                 {
                     return true;
                 }

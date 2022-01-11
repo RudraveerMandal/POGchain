@@ -26,10 +26,10 @@
  *    HELLO, GET_PEERS, PEERS, DONT_HAVE, ERROR_MSG
  *
  *  - One-way broadcast messages informing other peers of an event:
- *    TRANSACTION and SCP_MESSAGE
+ *    TRANSACTION and pogcvm_MESSAGE
  *
  *  - Two-way anycast messages requesting a value (by hash) or providing it:
- *    GET_TX_SET, TX_SET, GET_SCP_QUORUMSET, SCP_QUORUMSET, GET_SCP_STATE
+ *    GET_TX_SET, TX_SET, GET_pogcvm_QUORUMSET, pogcvm_QUORUMSET, GET_pogcvm_STATE
  *
  * Anycasts are initiated and serviced two instances of ItemFetcher
  * (mTxSetFetcher and mQuorumSetFetcher). Anycast messages are sent to

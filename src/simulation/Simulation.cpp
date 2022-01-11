@@ -9,7 +9,7 @@
 #include "main/Application.h"
 #include "overlay/OverlayManager.h"
 #include "overlay/PeerManager.h"
-#include "scp/LocalNode.h"
+#include "pogcvm/LocalNode.h"
 #include "test/TestUtils.h"
 #include "test/test.h"
 #include "util/Logging.h"
@@ -80,7 +80,7 @@ Simulation::setCurrentVirtualTime(VirtualClock::system_time_point t)
 }
 
 Application::pointer
-Simulation::addNode(SecretKey nodeKey, SCPQuorumSet qSet, Config const* cfg2,
+Simulation::addNode(SecretKey nodeKey, pogcvmQuorumSet qSet, Config const* cfg2,
                     bool newDB)
 {
     auto cfg = cfg2 ? std::make_shared<Config>(*cfg2)

@@ -49,23 +49,23 @@ OverlayMetrics::OverlayMetrics(Application& app)
     , mRecvTxSetTimer(app.getMetrics().NewTimer({"overlay", "recv", "txset"}))
     , mRecvTransactionTimer(
           app.getMetrics().NewTimer({"overlay", "recv", "transaction"}))
-    , mRecvGetSCPQuorumSetTimer(
-          app.getMetrics().NewTimer({"overlay", "recv", "get-scp-qset"}))
-    , mRecvSCPQuorumSetTimer(
-          app.getMetrics().NewTimer({"overlay", "recv", "scp-qset"}))
-    , mRecvSCPMessageTimer(
-          app.getMetrics().NewTimer({"overlay", "recv", "scp-message"}))
-    , mRecvGetSCPStateTimer(
-          app.getMetrics().NewTimer({"overlay", "recv", "get-scp-state"}))
+    , mRecvGetpogcvmQuorumSetTimer(
+          app.getMetrics().NewTimer({"overlay", "recv", "get-pogcvm-qset"}))
+    , mRecvpogcvmQuorumSetTimer(
+          app.getMetrics().NewTimer({"overlay", "recv", "pogcvm-qset"}))
+    , mRecvpogcvmMessageTimer(
+          app.getMetrics().NewTimer({"overlay", "recv", "pogcvm-message"}))
+    , mRecvGetpogcvmStateTimer(
+          app.getMetrics().NewTimer({"overlay", "recv", "get-pogcvm-state"}))
 
-    , mRecvSCPPrepareTimer(
-          app.getMetrics().NewTimer({"overlay", "recv", "scp-prepare"}))
-    , mRecvSCPConfirmTimer(
-          app.getMetrics().NewTimer({"overlay", "recv", "scp-confirm"}))
-    , mRecvSCPNominateTimer(
-          app.getMetrics().NewTimer({"overlay", "recv", "scp-nominate"}))
-    , mRecvSCPExternalizeTimer(
-          app.getMetrics().NewTimer({"overlay", "recv", "scp-externalize"}))
+    , mRecvpogcvmPrepareTimer(
+          app.getMetrics().NewTimer({"overlay", "recv", "pogcvm-prepare"}))
+    , mRecvpogcvmConfirmTimer(
+          app.getMetrics().NewTimer({"overlay", "recv", "pogcvm-confirm"}))
+    , mRecvpogcvmNominateTimer(
+          app.getMetrics().NewTimer({"overlay", "recv", "pogcvm-nominate"}))
+    , mRecvpogcvmExternalizeTimer(
+          app.getMetrics().NewTimer({"overlay", "recv", "pogcvm-externalize"}))
 
     , mRecvSurveyRequestTimer(
           app.getMetrics().NewTimer({"overlay", "recv", "survey-request"}))
@@ -95,14 +95,14 @@ OverlayMetrics::OverlayMetrics(Application& app)
           {"overlay", "send", "transaction"}, "message"))
     , mSendTxSetMeter(
           app.getMetrics().NewMeter({"overlay", "send", "txset"}, "message"))
-    , mSendGetSCPQuorumSetMeter(app.getMetrics().NewMeter(
-          {"overlay", "send", "get-scp-qset"}, "message"))
-    , mSendSCPQuorumSetMeter(
-          app.getMetrics().NewMeter({"overlay", "send", "scp-qset"}, "message"))
-    , mSendSCPMessageSetMeter(app.getMetrics().NewMeter(
-          {"overlay", "send", "scp-message"}, "message"))
-    , mSendGetSCPStateMeter(app.getMetrics().NewMeter(
-          {"overlay", "send", "get-scp-state"}, "message"))
+    , mSendGetpogcvmQuorumSetMeter(app.getMetrics().NewMeter(
+          {"overlay", "send", "get-pogcvm-qset"}, "message"))
+    , mSendpogcvmQuorumSetMeter(
+          app.getMetrics().NewMeter({"overlay", "send", "pogcvm-qset"}, "message"))
+    , mSendpogcvmMessageSetMeter(app.getMetrics().NewMeter(
+          {"overlay", "send", "pogcvm-message"}, "message"))
+    , mSendGetpogcvmStateMeter(app.getMetrics().NewMeter(
+          {"overlay", "send", "get-pogcvm-state"}, "message"))
     , mSendSurveyRequestMeter(app.getMetrics().NewMeter(
           {"overlay", "send", "survey-request"}, "message"))
     , mSendSurveyResponseMeter(app.getMetrics().NewMeter(

@@ -304,7 +304,7 @@ exit /b 0
     <ClCompile Include="..\..\src\herder\Herder.cpp" />
     <ClCompile Include="..\..\src\herder\HerderImpl.cpp" />
     <ClCompile Include="..\..\src\herder\HerderPersistenceImpl.cpp" />
-    <ClCompile Include="..\..\src\herder\HerderSCPDriver.cpp" />
+    <ClCompile Include="..\..\src\herder\HerderpogcvmDriver.cpp" />
     <ClCompile Include="..\..\src\herder\HerderUtils.cpp" />
     <ClCompile Include="..\..\src\herder\LedgerCloseData.cpp" />
     <ClCompile Include="..\..\src\herder\PendingEnvelopes.cpp" />
@@ -583,16 +583,16 @@ exit /b 0
     <ClCompile Include="..\..\src\util\test\BitSetTests.cpp" />
     <ClCompile Include="..\..\src\util\test\CacheTests.cpp" />
     <ClCompile Include="..\..\src\process\test\ProcessTests.cpp" />
-    <ClCompile Include="..\..\src\scp\BallotProtocol.cpp" />
-    <ClCompile Include="..\..\src\scp\LocalNode.cpp" />
-    <ClCompile Include="..\..\src\scp\NominationProtocol.cpp" />
-    <ClCompile Include="..\..\src\scp\QuorumSetUtils.cpp" />
-    <ClCompile Include="..\..\src\scp\SCP.cpp" />
-    <ClCompile Include="..\..\src\scp\SCPDriver.cpp" />
-    <ClCompile Include="..\..\src\scp\Slot.cpp" />
-    <ClCompile Include="..\..\src\scp\test\QuorumSetTests.cpp" />
-    <ClCompile Include="..\..\src\scp\test\SCPTests.cpp" />
-    <ClCompile Include="..\..\src\scp\test\SCPUnitTests.cpp" />
+    <ClCompile Include="..\..\src\pogcvm\BallotProtocol.cpp" />
+    <ClCompile Include="..\..\src\pogcvm\LocalNode.cpp" />
+    <ClCompile Include="..\..\src\pogcvm\NominationProtocol.cpp" />
+    <ClCompile Include="..\..\src\pogcvm\QuorumSetUtils.cpp" />
+    <ClCompile Include="..\..\src\pogcvm\pogcvm.cpp" />
+    <ClCompile Include="..\..\src\pogcvm\pogcvmDriver.cpp" />
+    <ClCompile Include="..\..\src\pogcvm\Slot.cpp" />
+    <ClCompile Include="..\..\src\pogcvm\test\QuorumSetTests.cpp" />
+    <ClCompile Include="..\..\src\pogcvm\test\pogcvmTests.cpp" />
+    <ClCompile Include="..\..\src\pogcvm\test\pogcvmUnitTests.cpp" />
     <ClCompile Include="..\..\src\simulation\Tests.cpp" />
     <ClCompile Include="..\..\src\simulation\LoadGenerator.cpp" />
     <ClCompile Include="..\..\src\simulation\Simulation.cpp" />
@@ -693,7 +693,7 @@ exit /b 0
     <ClInclude Include="..\..\src\herder\HerderImpl.h" />
     <ClInclude Include="..\..\src\herder\HerderPersistence.h" />
     <ClInclude Include="..\..\src\herder\HerderPersistenceImpl.h" />
-    <ClInclude Include="..\..\src\herder\HerderSCPDriver.h" />
+    <ClInclude Include="..\..\src\herder\HerderpogcvmDriver.h" />
     <ClInclude Include="..\..\src\herder\HerderUtils.h" />
     <ClInclude Include="..\..\src\herder\LedgerCloseData.h" />
     <ClInclude Include="..\..\src\herder\PendingEnvelopes.h" />
@@ -860,13 +860,13 @@ exit /b 0
     <ClInclude Include="..\..\src\overlay\Tracker.h" />
     <ClInclude Include="..\..\src\process\ProcessManager.h" />
     <ClInclude Include="..\..\src\process\ProcessManagerImpl.h" />
-    <ClInclude Include="..\..\src\scp\BallotProtocol.h" />
-    <ClInclude Include="..\..\src\scp\LocalNode.h" />
-    <ClInclude Include="..\..\src\scp\NominationProtocol.h" />
-    <ClInclude Include="..\..\src\scp\QuorumSetUtils.h" />
-    <ClInclude Include="..\..\src\scp\SCP.h" />
-    <ClInclude Include="..\..\src\scp\SCPDriver.h" />
-    <ClInclude Include="..\..\src\scp\Slot.h" />
+    <ClInclude Include="..\..\src\pogcvm\BallotProtocol.h" />
+    <ClInclude Include="..\..\src\pogcvm\LocalNode.h" />
+    <ClInclude Include="..\..\src\pogcvm\NominationProtocol.h" />
+    <ClInclude Include="..\..\src\pogcvm\QuorumSetUtils.h" />
+    <ClInclude Include="..\..\src\pogcvm\pogcvm.h" />
+    <ClInclude Include="..\..\src\pogcvm\pogcvmDriver.h" />
+    <ClInclude Include="..\..\src\pogcvm\Slot.h" />
     <ClInclude Include="..\..\src\simulation\LoadGenerator.h" />
     <ClInclude Include="..\..\src\simulation\Simulation.h" />
     <ClInclude Include="..\..\src\simulation\Topologies.h" />
@@ -937,7 +937,7 @@ exit /b 0
     <ClInclude Include="src\generated\xdr\POGchain-ledger-entries.h" />
     <ClInclude Include="src\generated\xdr\POGchain-ledger.h" />
     <ClInclude Include="src\generated\xdr\POGchain-overlay.h" />
-    <ClInclude Include="src\generated\xdr\POGchain-SCP.h" />
+    <ClInclude Include="src\generated\xdr\POGchain-pogcvm.h" />
     <ClInclude Include="src\generated\xdr\POGchain-transaction.h" />
     <ClInclude Include="src\generated\xdr\POGchain-types.h" />
   </ItemGroup>
@@ -1082,17 +1082,17 @@ exit /b 0
       <OutputItemType Condition="'$(Configuration)|$(Platform)'=='DebugNoPostgres|x64'">ClInclude</OutputItemType>
       <OutputItemType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">ClInclude</OutputItemType>
     </CustomBuild>
-    <CustomBuild Include="..\..\src\xdr\POGchain-SCP.x">
+    <CustomBuild Include="..\..\src\xdr\POGchain-pogcvm.x">
       <FileType>Document</FileType>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)$(Platform)\$(Configuration)\xdrc.exe -hh -pedantic -o src/generated/xdr/POGchain-SCP.h ../../src/xdr/POGchain-SCP.x</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='DebugNoPostgres|x64'">$(SolutionDir)$(Platform)\$(Configuration)\xdrc.exe -hh -pedantic -o src/generated/xdr/POGchain-SCP.h ../../src/xdr/POGchain-SCP.x</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)$(Platform)\$(Configuration)\xdrc.exe -hh -pedantic -o src/generated/xdr/POGchain-pogcvm.h ../../src/xdr/POGchain-pogcvm.x</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='DebugNoPostgres|x64'">$(SolutionDir)$(Platform)\$(Configuration)\xdrc.exe -hh -pedantic -o src/generated/xdr/POGchain-pogcvm.h ../../src/xdr/POGchain-pogcvm.x</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">running xdrc</Message>
       <Message Condition="'$(Configuration)|$(Platform)'=='DebugNoPostgres|x64'">running xdrc</Message>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">src/generated/xdr/POGchain-SCP.h</Outputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='DebugNoPostgres|x64'">src/generated/xdr/POGchain-SCP.h</Outputs>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)$(Platform)\$(Configuration)\xdrc.exe -hh -pedantic -o src/generated/xdr/POGchain-SCP.h ../../src/xdr/POGchain-SCP.x</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">src/generated/xdr/POGchain-pogcvm.h</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='DebugNoPostgres|x64'">src/generated/xdr/POGchain-pogcvm.h</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)$(Platform)\$(Configuration)\xdrc.exe -hh -pedantic -o src/generated/xdr/POGchain-pogcvm.h ../../src/xdr/POGchain-pogcvm.x</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">running xdrc</Message>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">src/generated/xdr/POGchain-SCP.h</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">src/generated/xdr/POGchain-pogcvm.h</Outputs>
       <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">src/generated/xdr/POGchain-types.h</AdditionalInputs>
       <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='DebugNoPostgres|x64'">src/generated/xdr/POGchain-types.h</AdditionalInputs>
       <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">src/generated/xdr/POGchain-types.h</AdditionalInputs>
@@ -1120,7 +1120,7 @@ exit /b 0
     </CustomBuild>
     <None Include="..\..\src\ledger\readme.md" />
     <None Include="..\..\src\overlay\readme.md" />
-    <None Include="..\..\src\scp\readme.md" />
+    <None Include="..\..\src\pogcvm\readme.md" />
     <None Include="..\..\src\transactions\readme.md" />
     <None Include="..\..\ci-build.sh" />
     <None Include="..\..\src\util\LogPartitions.def" />

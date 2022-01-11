@@ -50,11 +50,11 @@ class LedgerManager
         // Loading state from database, not yet active
         LM_BOOTING_STATE,
 
-        // local state is in sync with view of consensus coming from herder
+        // local state is in sync with view of validation coming from herder
         // desynchronization will cause transition to LM_BOOTING_STATE.
         LM_SYNCED_STATE,
 
-        // local state doesn't match view of consensus from herder
+        // local state doesn't match view of validation from herder
         // catchup is in progress
         LM_CATCHING_UP_STATE,
 
@@ -84,9 +84,9 @@ class LedgerManager
     // Genesis ledger
     static LedgerHeader genesisLedger();
 
-    // Called by Herder to inform LedgerManager that a SCP has agreed on a new
+    // Called by Herder to inform LedgerManager that a pogcvm has agreed on a new
     // close event. This is the most common cause of LedgerManager advancing
-    // from one ledger to the next: the network reached consensus on
+    // from one ledger to the next: the network reached validation on
     // `ledgerData`.
     virtual void valueExternalized(LedgerCloseData const& ledgerData) = 0;
 
@@ -139,13 +139,13 @@ class LedgerManager
     // Forcibly switch the application into catchup mode, treating `toLedger`
     // as the destination ledger number and count as the number of past ledgers
     // that should be replayed. Normally this happens automatically when
-    // LedgerManager detects it is desynchronized from SCP's consensus ledger.
+    // LedgerManager detects it is desynchronized from pogcvm's validation ledger.
     // This method is present in the public interface to permit testing and
     // offline catchups.
     virtual void startCatchup(CatchupConfiguration configuration,
                               std::shared_ptr<HistoryArchive> archive) = 0;
 
-    // Forcibly close the current ledger, applying `ledgerData` as the consensus
+    // Forcibly close the current ledger, applying `ledgerData` as the validation
     // changes.  This is normally done automatically as part of
     // `valueExternalized()`; this method is present in the public interface to
     // permit testing.

@@ -969,7 +969,7 @@ TEST_CASE("connecting to saturated nodes", "[overlay][connections][acceptance]")
     SIMULATION_CREATE_NODE(Node2);
     SIMULATION_CREATE_NODE(Node3);
 
-    SCPQuorumSet qSet;
+    pogcvmQuorumSet qSet;
     qSet.threshold = 2;
     qSet.validators.push_back(vHeadNodeID);
     qSet.validators.push_back(vNode1NodeID);
@@ -1029,7 +1029,7 @@ TEST_CASE("inbounds nodes can be promoted to ouboundvalid",
     SIMULATION_CREATE_NODE(Node2);
     SIMULATION_CREATE_NODE(Node3);
 
-    SCPQuorumSet qSet;
+    pogcvmQuorumSet qSet;
     qSet.threshold = 1;
     qSet.validators.push_back(vNode1NodeID);
 
@@ -1187,7 +1187,7 @@ TEST_CASE("peer numfailures resets after good connection",
     SIMULATION_CREATE_NODE(Node1);
     SIMULATION_CREATE_NODE(Node2);
 
-    SCPQuorumSet qSet;
+    pogcvmQuorumSet qSet;
     qSet.threshold = 1;
     qSet.validators.push_back(vNode1NodeID);
 
@@ -1223,7 +1223,7 @@ TEST_CASE("peer is purged from database after few failures",
 
     SIMULATION_CREATE_NODE(Node1);
 
-    SCPQuorumSet qSet;
+    pogcvmQuorumSet qSet;
     qSet.threshold = 1;
     qSet.validators.push_back(vNode1NodeID);
 

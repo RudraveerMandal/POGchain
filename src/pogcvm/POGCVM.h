@@ -11,29 +11,29 @@
 #include <set>
 
 #include "lib/json/json-forwards.h"
-#include "scp/SCPDriver.h"
+#include "pogcvm/pogcvmDriver.h"
 
 namespace POGchain
 {
 class Node;
 class Slot;
 class LocalNode;
-typedef std::shared_ptr<SCPQuorumSet> SCPQuorumSetPtr;
+typedef std::shared_ptr<pogcvmQuorumSet> pogcvmQuorumSetPtr;
 
-class SCP
+class pogcvm
 {
-    SCPDriver& mDriver;
+    pogcvmDriver& mDriver;
 
   public:
-    SCP(SCPDriver& driver, NodeID const& nodeID, bool isValidator,
-        SCPQuorumSet const& qSetLocal);
+    pogcvm(pogcvmDriver& driver, NodeID const& nodeID, bool isValidator,
+        pogcvmQuorumSet const& qSetLocal);
 
-    SCPDriver&
+    pogcvmDriver&
     getDriver()
     {
         return mDriver;
     }
-    SCPDriver const&
+    pogcvmDriver const&
     getDriver() const
     {
         return mDriver;
@@ -45,10 +45,10 @@ class SCP
         VALID    // the envelope is valid
     };
 
-    // this is the main entry point of the SCP library
+    // this is the main entry point of the pogcvm library
     // it processes the envelope, updates the internal state and
     // invokes the appropriate methods
-    EnvelopeState receiveEnvelope(SCPEnvelopeWrapperPtr envelope);
+    EnvelopeState receiveEnvelope(pogcvmEnvelopeWrapperPtr envelope);
 
     // Submit a value to consider for slotIndex
     // previousValue is the value from slotIndex-1
@@ -59,8 +59,8 @@ class SCP
     void stopNomination(uint64 slotIndex);
 
     // Local QuorumSet interface (can be dynamically updated)
-    void updateLocalQuorumSet(SCPQuorumSet const& qSet);
-    SCPQuorumSet const& getLocalQuorumSet();
+    void updateLocalQuorumSet(pogcvmQuorumSet const& qSet);
+    pogcvmQuorumSet const& getLocalQuorumSet();
 
     // Local nodeID getter
     NodeID const& getLocalNodeID();
@@ -88,17 +88,17 @@ class SCP
     // returns if we received messages from a v-blocking set
     bool gotVBlocking(uint64 slotIndex);
 
-    // Helpers for monitoring and reporting the internal memory-usage of the SCP
+    // Helpers for monitoring and reporting the internal memory-usage of the pogcvm
     // protocol to system metric reporters.
     size_t getKnownSlotsCount() const;
     size_t getCumulativeStatemtCount() const;
 
     // returns the latest messages sent for the given slot
-    std::vector<SCPEnvelope> getLatestMessagesSend(uint64 slotIndex);
+    std::vector<pogcvmEnvelope> getLatestMessagesSend(uint64 slotIndex);
 
     // forces the state to match the one in the envelope
     // this is used when rebuilding the state after a crash for example
-    void setStateFromEnvelope(uint64 slotIndex, SCPEnvelopeWrapperPtr e);
+    void setStateFromEnvelope(uint64 slotIndex, pogcvmEnvelopeWrapperPtr e);
 
     // check if we are holding some slots
     bool empty() const;
@@ -107,7 +107,7 @@ class SCP
     // if forceSelf, return messages for self even if not fully validated
     // f returns false to stop processing, true otherwise
     void processCurrentState(uint64 slotIndex,
-                             std::function<bool(SCPEnvelope const&)> const& f,
+                             std::function<bool(pogcvmEnvelope const&)> const& f,
                              bool forceSelf);
 
     // iterates through slots, starting from slot startIndex
@@ -120,19 +120,19 @@ class SCP
 
     // returns the latest message from a node
     // or nullptr if not found
-    SCPEnvelope const* getLatestMessage(NodeID const& id);
+    pogcvmEnvelope const* getLatestMessage(NodeID const& id);
 
     // returns messages that contributed to externalizing the slot
     // (or empty if the slot didn't externalize)
-    std::vector<SCPEnvelope> getExternalizingState(uint64 slotIndex);
+    std::vector<pogcvmEnvelope> getExternalizingState(uint64 slotIndex);
 
     // ** helper methods to stringify ballot for logging
     std::string getValueString(Value const& v) const;
-    std::string ballotToStr(SCPBallot const& ballot) const;
-    std::string ballotToStr(std::unique_ptr<SCPBallot> const& ballot) const;
-    std::string envToStr(SCPEnvelope const& envelope,
+    std::string ballotToStr(pogcvmBallot const& ballot) const;
+    std::string ballotToStr(std::unique_ptr<pogcvmBallot> const& ballot) const;
+    std::string envToStr(pogcvmEnvelope const& envelope,
                          bool fullKeys = false) const;
-    std::string envToStr(SCPStatement const& st, bool fullKeys = false) const;
+    std::string envToStr(pogcvmStatement const& st, bool fullKeys = false) const;
 
   protected:
     std::shared_ptr<LocalNode> mLocalNode;
@@ -141,6 +141,6 @@ class SCP
     // Slot getter
     std::shared_ptr<Slot> getSlot(uint64 slotIndex, bool create);
 
-    friend class TestSCP;
+    friend class Testpogcvm;
 };
 }

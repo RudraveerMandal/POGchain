@@ -32,7 +32,7 @@ InflationOpFrame::doApply(AbstractLedgerTxn& ltx)
 {
     auto header = ltx.loadHeader();
     auto& lh = header.current();
-    time_t closeTime = lh.scpValue.closeTime;
+    time_t closeTime = lh.pogcvmValue.closeTime;
     uint64_t seq = lh.inflationSeq;
 
     time_t inflationTime = (INFLATION_START_TIME + seq * INFLATION_FREQUENCY);

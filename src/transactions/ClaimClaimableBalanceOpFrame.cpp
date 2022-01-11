@@ -89,7 +89,7 @@ ClaimClaimableBalanceOpFrame::doApply(AbstractLedgerTxn& ltx)
     auto header = ltx.loadHeader();
     if (it == claimableBalance.claimants.end() ||
         !validatePredicate(it->v0().predicate,
-                           header.current().scpValue.closeTime))
+                           header.current().pogcvmValue.closeTime))
     {
         innerResult().code(CLAIM_CLAIMABLE_BALANCE_CANNOT_CLAIM);
         return false;

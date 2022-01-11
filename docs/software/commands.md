@@ -68,8 +68,8 @@ Command options can only by placed after command.
 * **report-last-history-checkpoint**: Download and report last history
   checkpoint from a history archive.
 * **run**: Runs POGchain service.<br>
-  Option **--wait-for-consensus** lets validators wait to hear from the network
-  before participating in consensus.<br>
+  Option **--wait-for-validation** lets validators wait to hear from the network
+  before participating in validation.<br>
   Option **--in-memory** stores the current ledger in memory rather than a
   database.<br>
   Option **--start-at-ledger <N>** starts **--in-memory** mode with a catchup to
@@ -109,7 +109,7 @@ Command options can only by placed after command.
     `POGchain test -a --version 9 --version 10 "[tx]"`
 * **upgrade-db**: Upgrades local database to current schema version. This is
   usually done automatically during POGchain run or other command.
-* **verify-checkpoints**: Listens to the network until it observes a consensus
+* **verify-checkpoints**: Listens to the network until it observes a validation
   hash for a checkpoint ledger, and then verifies the entire earlier history
   of an archive that ends in that ledger hash, writing the output to a reference
   list of trusted checkpoint hashes.
@@ -156,7 +156,7 @@ format.
 * **ll**  
   `ll?level=L[&partition=P]`<br>
   Adjust the log level for partition P where P is one of Bucket, Database, Fs,
-  Herder, History, Ledger, Overlay, Process, SCP, Tx (or all if no partition is
+  Herder, History, Ledger, Overlay, Process, pogcvm, Tx (or all if no partition is
   specified). Level is one of FATAL, ERROR, WARNING, INFO, DEBUG, VERBOSE,
   TRACE.
 
@@ -172,7 +172,7 @@ format.
   `metrics?[enable=PARTITION_1,PARTITION_2,...,PARTITION_N]`<br>
   Returns a snapshot of the metrics registry (for monitoring and debugging
   purpose).
-  If `enable` is set, return only specified metric partitions. Partitions are either metric domain names (e.g. `scp`, `overlay`, etc) or individual metric names.
+  If `enable` is set, return only specified metric partitions. Partitions are either metric domain names (e.g. `pogcvm`, `overlay`, etc) or individual metric names.
 
 * **clearmetrics**
   `clearmetrics?[domain=DOMAIN]`<br>
@@ -212,9 +212,9 @@ format.
   Gets the cursor identified by `ID`. If ID is not defined then all cursors
   will be returned.
 
-* **scp**
-  `scp?[limit=n][&fullkeys=false]`<br>
-  Returns a JSON object with the internal state of the SCP engine for the last
+* **pogcvm**
+  `pogcvm?[limit=n][&fullkeys=false]`<br>
+  Returns a JSON object with the internal state of the pogcvm engine for the last
   n (default 2) ledgers. Outputs unshortened public keys if fullkeys is set.
 
 * **tx**
@@ -223,7 +223,7 @@ format.
   blob is a base64 encoded XDR serialized 'TransactionEnvelope', and it
   returns a JSON object with the following properties
   status:
-    * "PENDING" - transaction is being considered by consensus
+    * "PENDING" - transaction is being considered by validation
     * "DUPLICATE" - transaction is already PENDING
     * "ERROR" - transaction rejected by transaction engine
         error: set when status is "ERROR".
@@ -299,8 +299,8 @@ format.
 * **manualclose**
   If MANUAL_CLOSE is set to true in the .cfg file, this will cause the current
   ledger to close. If MANUAL_CLOSE is set to false, allows a validating node
-  that is waiting to hear about consensus from the network to force ledger close,
-  and start a new consensus round.
+  that is waiting to hear about validation from the network to force ledger close,
+  and start a new validation round.
 
 * **testacc**
   `testacc?name=N`<br>

@@ -140,20 +140,20 @@ class Application
         // Application created, but not started
         APP_CREATED_STATE,
 
-        // Out of sync with SCP peers
-        APP_ACQUIRING_CONSENSUS_STATE,
+        // Out of sync with pogcvm peers
+        APP_ACQUIRING_validation_STATE,
 
-        // Connected to other SCP peers
+        // Connected to other pogcvm peers
 
         // in sync with network but ledger subsystem still booting up
         APP_CONNECTED_STANDBY_STATE,
 
-        // some work required to catchup to the consensus ledger
+        // some work required to catchup to the validation ledger
         // ie: downloading from history, applying buckets and replaying
         // transactions
         APP_CATCHING_UP_STATE,
 
-        // In sync with SCP peers, applying transactions. SCP is active,
+        // In sync with pogcvm peers, applying transactions. pogcvm is active,
         APP_SYNCED_STATE,
 
         // application is shutting down
@@ -234,7 +234,7 @@ class Application
 
     // Perform actions necessary to transition from BOOTING_STATE to other
     // states. In particular: either reload or reinitialize the database, and
-    // either restart or begin reacquiring SCP consensus (as instructed by
+    // either restart or begin reacquiring pogcvm validation (as instructed by
     // Config).
     virtual void start() = 0;
 

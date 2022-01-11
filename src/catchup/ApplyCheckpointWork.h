@@ -11,7 +11,7 @@
 #include "util/XDRStream.h"
 #include "work/ConditionalWork.h"
 #include "work/Work.h"
-#include "xdr/POGchain-SCP.h"
+#include "xdr/POGchain-pogcvm.h"
 #include "xdr/POGchain-ledger.h"
 
 namespace POGchain

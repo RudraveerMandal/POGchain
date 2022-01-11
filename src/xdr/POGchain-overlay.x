@@ -83,11 +83,11 @@ enum MessageType
 
     TRANSACTION = 8, // pass on a tx you have heard about
 
-    // SCP
-    GET_SCP_QUORUMSET = 9,
-    SCP_QUORUMSET = 10,
-    SCP_MESSAGE = 11,
-    GET_SCP_STATE = 12,
+    // pogcvm
+    GET_pogcvm_QUORUMSET = 9,
+    pogcvm_QUORUMSET = 10,
+    pogcvm_MESSAGE = 11,
+    GET_pogcvm_STATE = 12,
 
     // new messages
     HELLO = 13,
@@ -205,15 +205,15 @@ case SURVEY_REQUEST:
 case SURVEY_RESPONSE:
     SignedSurveyResponseMessage signedSurveyResponseMessage;
 
-// SCP
-case GET_SCP_QUORUMSET:
+// pogcvm
+case GET_pogcvm_QUORUMSET:
     uint256 qSetHash;
-case SCP_QUORUMSET:
-    SCPQuorumSet qSet;
-case SCP_MESSAGE:
-    SCPEnvelope envelope;
-case GET_SCP_STATE:
-    uint32 getSCPLedgerSeq; // ledger seq requested ; if 0, requests the latest
+case pogcvm_QUORUMSET:
+    pogcvmQuorumSet qSet;
+case pogcvm_MESSAGE:
+    pogcvmEnvelope envelope;
+case GET_pogcvm_STATE:
+    uint32 getpogcvmLedgerSeq; // ledger seq requested ; if 0, requests the latest
 };
 
 union AuthenticatedMessage switch (uint32 v)

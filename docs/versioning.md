@@ -12,11 +12,11 @@ Protocol in this case is defined both as "wire format" (ie, the serialized forms
 
 This version number is incremented every time the protocol changes.
 
-### Integration with consensus
-Most of the time consensus is simply reached on which transaction set needs to
+### Integration with validation
+Most of the time validation is simply reached on which transaction set needs to
 be applied to the previous ledger.
 
-However consensus can in addition be reached on upgrade steps.
+However validation can in addition be reached on upgrade steps.
 
 One such upgrade step is something like "update ledgerVersion to value X after
 current ledger".
@@ -24,7 +24,7 @@ current ledger".
 If nodes do not consider that the upgrade set is valid they simply drop the
 upgrade step from their vote during nomination.
 If a quorum voted for an invalid value, the validator will ignore
-the SCP messages for the current ledger (ie: abstain).
+the pogcvm messages for the current ledger (ie: abstain).
 
 A node considers a step invalid either because:
 * they do not understand it, for example a new upgrade type not implemented
@@ -54,12 +54,12 @@ Upgrades are specified with:
 #### Limitations of the current implementation
 There is an assumption that validator operators are either paying attention to network wide proposals
 or do not really care about the network settings per se.
-For that reason, upgrades are only validated during SCP rounds - ie, they are not validated when catching up from history.
+For that reason, upgrades are only validated during pogcvm rounds - ie, they are not validated when catching up from history.
 
 As a consequence, there is currently no way for a node to not eventually rejoin the network if it doesn't agree
 with the upgrade.
 
-A validator in this situation will disagree with the SCP round with the upgrade (and won't even see the network closing
+A validator in this situation will disagree with the pogcvm round with the upgrade (and won't even see the network closing
 as invalid values are invisible to the validator),
 but it will rejoin the network after a few minutes by downloading historical data from other nodes.
 The validator will still try to revert the changes by voting for the values it has in its configuration.

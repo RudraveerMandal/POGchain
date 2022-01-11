@@ -17,7 +17,7 @@ namespace POGchain
 using namespace std;
 
 std::string PersistentState::mapping[kLastEntry] = {
-    "lastclosedledger", "historyarchivestate", "lastscpdata",
+    "lastclosedledger", "historyarchivestate", "lastpogcvmdata",
     "databaseschema",   "networkpassphrase",   "ledgerupgrades",
     "rebuildledger"};
 
@@ -48,7 +48,7 @@ PersistentState::getStoreStateName(PersistentState::Entry n, uint32 subscript)
         throw out_of_range("unknown entry");
     }
     auto res = mapping[n];
-    if ((n == kLastSCPData && subscript > 0) || n == kRebuildLedger)
+    if ((n == kLastpogcvmData && subscript > 0) || n == kRebuildLedger)
     {
         res += std::to_string(subscript);
     }
@@ -71,14 +71,14 @@ PersistentState::setState(PersistentState::Entry entry,
 }
 
 std::vector<std::string>
-PersistentState::getSCPStateAllSlots()
+PersistentState::getpogcvmStateAllSlots()
 {
     ZoneScoped;
     // Collect all slots persisted
     std::vector<std::string> states;
     for (uint32 i = 0; i <= mApp.getConfig().MAX_SLOTS_TO_REMEMBER; i++)
     {
-        auto val = getFromDb(getStoreStateName(kLastSCPData, i));
+        auto val = getFromDb(getStoreStateName(kLastpogcvmData, i));
         if (!val.empty())
         {
             states.push_back(val);
@@ -89,12 +89,12 @@ PersistentState::getSCPStateAllSlots()
 }
 
 void
-PersistentState::setSCPStateForSlot(uint64 slot, std::string const& value)
+PersistentState::setpogcvmStateForSlot(uint64 slot, std::string const& value)
 {
     ZoneScoped;
     auto slotIdx = static_cast<uint32>(
         slot % (mApp.getConfig().MAX_SLOTS_TO_REMEMBER + 1));
-    updateDb(getStoreStateName(kLastSCPData, slotIdx), value);
+    updateDb(getStoreStateName(kLastpogcvmData, slotIdx), value);
 }
 
 bool

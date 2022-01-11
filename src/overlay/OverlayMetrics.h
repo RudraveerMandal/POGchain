@@ -46,15 +46,15 @@ struct OverlayMetrics
     medida::Timer& mRecvGetTxSetTimer;
     medida::Timer& mRecvTxSetTimer;
     medida::Timer& mRecvTransactionTimer;
-    medida::Timer& mRecvGetSCPQuorumSetTimer;
-    medida::Timer& mRecvSCPQuorumSetTimer;
-    medida::Timer& mRecvSCPMessageTimer;
-    medida::Timer& mRecvGetSCPStateTimer;
+    medida::Timer& mRecvGetpogcvmQuorumSetTimer;
+    medida::Timer& mRecvpogcvmQuorumSetTimer;
+    medida::Timer& mRecvpogcvmMessageTimer;
+    medida::Timer& mRecvGetpogcvmStateTimer;
 
-    medida::Timer& mRecvSCPPrepareTimer;
-    medida::Timer& mRecvSCPConfirmTimer;
-    medida::Timer& mRecvSCPNominateTimer;
-    medida::Timer& mRecvSCPExternalizeTimer;
+    medida::Timer& mRecvpogcvmPrepareTimer;
+    medida::Timer& mRecvpogcvmConfirmTimer;
+    medida::Timer& mRecvpogcvmNominateTimer;
+    medida::Timer& mRecvpogcvmExternalizeTimer;
 
     medida::Timer& mRecvSurveyRequestTimer;
     medida::Timer& mRecvSurveyResponseTimer;
@@ -71,10 +71,10 @@ struct OverlayMetrics
     medida::Meter& mSendGetTxSetMeter;
     medida::Meter& mSendTransactionMeter;
     medida::Meter& mSendTxSetMeter;
-    medida::Meter& mSendGetSCPQuorumSetMeter;
-    medida::Meter& mSendSCPQuorumSetMeter;
-    medida::Meter& mSendSCPMessageSetMeter;
-    medida::Meter& mSendGetSCPStateMeter;
+    medida::Meter& mSendGetpogcvmQuorumSetMeter;
+    medida::Meter& mSendpogcvmQuorumSetMeter;
+    medida::Meter& mSendpogcvmMessageSetMeter;
+    medida::Meter& mSendGetpogcvmStateMeter;
 
     medida::Meter& mSendSurveyRequestMeter;
     medida::Meter& mSendSurveyResponseMeter;

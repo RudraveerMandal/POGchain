@@ -250,7 +250,7 @@ TransactionQueue::canAdd(TransactionFrameBasePtr tx,
 
     auto closeTime = mApp.getLedgerManager()
                          .getLastClosedLedgerHeader()
-                         .header.scpValue.closeTime;
+                         .header.pogcvmValue.closeTime;
 
     // Transaction queue performs read-only transactions to the database and
     // there are no concurrent writers, so it is safe to not enclose all the SQL

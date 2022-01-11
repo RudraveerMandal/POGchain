@@ -4,7 +4,7 @@
 // under the Apache License, Version 2.0. See the COPYING file at the root
 // of this distribution or at http://www.apache.org/licenses/LICENSE-2.0
 
-#include "scp/SCP.h"
+#include "pogcvm/pogcvm.h"
 #include "util/NonCopyable.h"
 #include "util/UnorderedMap.h"
 #include "util/UnorderedSet.h"
@@ -26,7 +26,7 @@ class QuorumTracker : public NonMovableOrCopyable
   public:
     struct NodeInfo
     {
-        SCPQuorumSetPtr mQuorumSet;
+        pogcvmQuorumSetPtr mQuorumSet;
 
         // The next two fields represent distance to the local node and a set of
         // validators in the local qset that are closest to the node that
@@ -67,10 +67,10 @@ class QuorumTracker : public NonMovableOrCopyable
     // `expand` additionally populates the closest validators set in the
     // NodeInfo for id. For every node outside of the local qset, keep track of
     // the nodes in the qset, which are equally close to the external node
-    bool expand(NodeID const& id, SCPQuorumSetPtr qSet);
+    bool expand(NodeID const& id, pogcvmQuorumSetPtr qSet);
 
     // rebuild the transitive quorum given a lookup function
-    void rebuild(std::function<SCPQuorumSetPtr(NodeID const&)> lookup);
+    void rebuild(std::function<pogcvmQuorumSetPtr(NodeID const&)> lookup);
 
     // returns the current known quorum
     QuorumMap const& getQuorum() const;

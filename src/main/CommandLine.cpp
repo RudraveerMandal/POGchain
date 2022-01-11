@@ -20,7 +20,7 @@
 #include "main/POGchainVersion.h"
 #include "main/dumpxdr.h"
 #include "overlay/OverlayManager.h"
-#include "scp/QuorumSetUtils.h"
+#include "pogcvm/QuorumSetUtils.h"
 #include "src/catchup/simulation/TxSimApplyTransactionsWork.h"
 #include "src/transactions/simulation/TxSimScaleBucketlistWork.h"
 #include "util/Logging.h"
@@ -242,9 +242,9 @@ disableBucketGCParser(bool& disableBucketGC)
 }
 
 clara::Opt
-waitForConsensusParser(bool& waitForConsensus)
+waitForvalidationParser(bool& waitForvalidation)
 {
-    return clara::Opt{waitForConsensus}["--wait-for-consensus"](
+    return clara::Opt{waitForvalidation}["--wait-for-validation"](
         "wait to hear from the network before voting, for validating nodes "
         "only");
 }
@@ -778,7 +778,7 @@ runCatchup(CommandLineArgs const& args)
                         auto& ps = app->getPersistentState();
                         ps.setState(PersistentState::kLastClosedLedger, "");
                         ps.setState(PersistentState::kHistoryArchiveState, "");
-                        ps.setState(PersistentState::kLastSCPData, "");
+                        ps.setState(PersistentState::kLastpogcvmData, "");
                         ps.setState(PersistentState::kLedgerUpgrades, "");
                     }
 
@@ -971,19 +971,19 @@ runEncodeAsset(CommandLineArgs const& args)
 }
 
 int
-runForceSCP(CommandLineArgs const& args)
+runForcepogcvm(CommandLineArgs const& args)
 {
     CommandLine::ConfigOption configOption;
     auto reset = false;
 
     auto resetOption = clara::Opt{reset}["--reset"](
-        "reset force SCP flag, so next time POGchain "
+        "reset force pogcvm flag, so next time POGchain "
         "is run it will wait to hear from the network "
         "rather than starting with the local ledger");
 
     return runWithHelp(args, {configurationParser(configOption), resetOption},
                        [&] {
-                           setForceSCPFlag();
+                           setForcepogcvmFlag();
                            return 0;
                        });
 }
@@ -1148,7 +1148,7 @@ run(CommandLineArgs const& args)
     auto disableBucketGC = false;
     std::string stream;
     bool inMemory = false;
-    bool waitForConsensus = false;
+    bool waitForvalidation = false;
     uint32_t startAtLedger = 0;
     std::string startAtHash;
 
@@ -1157,7 +1157,7 @@ run(CommandLineArgs const& args)
         {configurationParser(configOption),
          disableBucketGCParser(disableBucketGC),
          metadataOutputStreamParser(stream), inMemoryParser(inMemory),
-         waitForConsensusParser(waitForConsensus),
+         waitForvalidationParser(waitForvalidation),
          startAtLedgerParser(startAtLedger), startAtHashParser(startAtHash)},
         [&] {
             Config cfg;
@@ -1185,8 +1185,8 @@ run(CommandLineArgs const& args)
                                         startAtHash,
                                         /* persistMinimalData */ true);
                 maybeSetMetadataOutputStream(cfg, stream);
-                cfg.FORCE_SCP =
-                    cfg.NODE_IS_VALIDATOR ? !waitForConsensus : false;
+                cfg.FORCE_pogcvm =
+                    cfg.NODE_IS_VALIDATOR ? !waitForvalidation : false;
 
                 if (cfg.MANUAL_CLOSE)
                 {
@@ -1636,8 +1636,8 @@ handleCommandLine(int argc, char* const* argv)
          {"dump-xdr", "dump an XDR file, for debugging", runDumpXDR},
          {"encode-asset", "Print an encoded asset in base 64 for debugging",
           runEncodeAsset},
-         {"force-scp", "deprecated, use --wait-for-consensus option instead",
-          runForceSCP},
+         {"force-pogcvm", "deprecated, use --wait-for-validation option instead",
+          runForcepogcvm},
          {"gen-seed", "generate and print a random node seed", runGenSeed},
          {"http-command", "send a command to local POGchain",
           runHttpCommand},

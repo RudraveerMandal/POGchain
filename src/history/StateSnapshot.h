@@ -25,7 +25,7 @@ struct StateSnapshot : public std::enable_shared_from_this<StateSnapshot>
     std::shared_ptr<FileTransferInfo> mLedgerSnapFile;
     std::shared_ptr<FileTransferInfo> mTransactionSnapFile;
     std::shared_ptr<FileTransferInfo> mTransactionResultSnapFile;
-    std::shared_ptr<FileTransferInfo> mSCPHistorySnapFile;
+    std::shared_ptr<FileTransferInfo> mpogcvmHistorySnapFile;
 
     StateSnapshot(Application& app, HistoryArchiveState const& state);
     bool writeHistoryBlocks() const;

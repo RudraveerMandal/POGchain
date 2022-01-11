@@ -52,7 +52,7 @@ class CommandHandler
     void quorum(std::string const& params, std::string& retStr);
     void setcursor(std::string const& params, std::string& retStr);
     void getcursor(std::string const& params, std::string& retStr);
-    void scpInfo(std::string const& params, std::string& retStr);
+    void pogcvmInfo(std::string const& params, std::string& retStr);
     void tx(std::string const& params, std::string& retStr);
     void unban(std::string const& params, std::string& retStr);
     void upgrades(std::string const& params, std::string& retStr);

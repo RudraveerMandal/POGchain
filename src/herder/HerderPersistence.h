@@ -6,7 +6,7 @@
 
 #include "herder/QuorumTracker.h"
 #include "overlay/Peer.h"
-#include "xdr/POGchain-SCP.h"
+#include "xdr/POGchain-pogcvm.h"
 #include <cstdint>
 #include <memory>
 #include <optional>
@@ -32,18 +32,18 @@ class HerderPersistence
     {
     }
 
-    virtual void saveSCPHistory(uint32_t seq,
-                                std::vector<SCPEnvelope> const& envs,
+    virtual void savepogcvmHistory(uint32_t seq,
+                                std::vector<pogcvmEnvelope> const& envs,
                                 QuorumTracker::QuorumMap const& qmap) = 0;
 
-    static size_t copySCPHistoryToStream(Database& db, soci::session& sess,
+    static size_t copypogcvmHistoryToStream(Database& db, soci::session& sess,
                                          uint32_t ledgerSeq,
                                          uint32_t ledgerCount,
-                                         XDROutputFileStream& scpHistory);
+                                         XDROutputFileStream& pogcvmHistory);
     // quorum information lookup
     static std::optional<Hash>
     getNodeQuorumSet(Database& db, soci::session& sess, NodeID const& nodeID);
-    static SCPQuorumSetPtr getQuorumSet(Database& db, soci::session& sess,
+    static pogcvmQuorumSetPtr getQuorumSet(Database& db, soci::session& sess,
                                         Hash const& qSetHash);
 
     static void dropAll(Database& db);

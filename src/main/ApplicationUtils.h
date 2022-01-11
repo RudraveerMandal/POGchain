@@ -18,7 +18,7 @@ Application::pointer setupApp(Config& cfg, VirtualClock& clock,
                               uint32_t startAtLedger,
                               std::string const& startAtHash);
 int runApp(Application::pointer app);
-void setForceSCPFlag();
+void setForcepogcvmFlag();
 void initializeDatabase(Config cfg);
 void httpCommand(std::string const& command, unsigned short port);
 int selfCheck(Config cfg);

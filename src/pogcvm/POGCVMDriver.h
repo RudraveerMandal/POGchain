@@ -11,7 +11,7 @@
 #include <memory>
 #include <set>
 
-#include "xdr/POGchain-SCP.h"
+#include "xdr/POGchain-pogcvm.h"
 
 namespace POGchain
 {
@@ -30,7 +30,7 @@ class ValueWrapper : public NonMovableOrCopyable
     }
 };
 
-typedef std::shared_ptr<SCPQuorumSet> SCPQuorumSetPtr;
+typedef std::shared_ptr<pogcvmQuorumSet> pogcvmQuorumSetPtr;
 typedef std::shared_ptr<ValueWrapper> ValueWrapperPtr;
 
 class WrappedValuePtrComparator
@@ -41,64 +41,64 @@ class WrappedValuePtrComparator
 
 typedef std::set<ValueWrapperPtr, WrappedValuePtrComparator> ValueWrapperPtrSet;
 
-class SCPEnvelopeWrapper : public NonMovableOrCopyable
+class pogcvmEnvelopeWrapper : public NonMovableOrCopyable
 {
-    SCPEnvelope const mEnvelope;
+    pogcvmEnvelope const mEnvelope;
 
   public:
-    explicit SCPEnvelopeWrapper(SCPEnvelope const& e);
-    virtual ~SCPEnvelopeWrapper();
+    explicit pogcvmEnvelopeWrapper(pogcvmEnvelope const& e);
+    virtual ~pogcvmEnvelopeWrapper();
 
-    SCPEnvelope const&
+    pogcvmEnvelope const&
     getEnvelope() const
     {
         return mEnvelope;
     }
-    SCPStatement const&
+    pogcvmStatement const&
     getStatement() const
     {
         return mEnvelope.statement;
     }
 };
 
-typedef std::shared_ptr<SCPEnvelopeWrapper> SCPEnvelopeWrapperPtr;
+typedef std::shared_ptr<pogcvmEnvelopeWrapper> pogcvmEnvelopeWrapperPtr;
 
-class SCPDriver
+class pogcvmDriver
 {
   public:
-    virtual ~SCPDriver()
+    virtual ~pogcvmDriver()
     {
     }
 
     // Envelope signature
-    virtual void signEnvelope(SCPEnvelope& envelope) = 0;
+    virtual void signEnvelope(pogcvmEnvelope& envelope) = 0;
 
-    // SCPEnvelopeWrapper factory
-    virtual SCPEnvelopeWrapperPtr wrapEnvelope(SCPEnvelope const& envelope);
+    // pogcvmEnvelopeWrapper factory
+    virtual pogcvmEnvelopeWrapperPtr wrapEnvelope(pogcvmEnvelope const& envelope);
 
     // ValueWrapperPtr factory
     virtual ValueWrapperPtr wrapValue(Value const& value);
 
     // Retrieves a quorum set from its hash
     //
-    // All SCP statement (see `SCPNomination` and `SCPStatement`) include
+    // All pogcvm statement (see `pogcvmNomination` and `pogcvmStatement`) include
     // a quorum set hash.
-    // SCP does not define how quorum sets are exchanged between nodes,
-    // hence their retrieval is delegated to the user of SCP.
-    // The return value is not cached by SCP, as quorum sets are transient.
+    // pogcvm does not define how quorum sets are exchanged between nodes,
+    // hence their retrieval is delegated to the user of pogcvm.
+    // The return value is not cached by pogcvm, as quorum sets are transient.
     //
     // `nullptr` is a valid return value which cause the statement to be
     // considered invalid.
-    virtual SCPQuorumSetPtr getQSet(Hash const& qSetHash) = 0;
+    virtual pogcvmQuorumSetPtr getQSet(Hash const& qSetHash) = 0;
 
-    // Users of the SCP library should inherit from SCPDriver and implement the
-    // virtual methods which are called by the SCP implementation to
-    // abstract the transport layer used from the implementation of the SCP
+    // Users of the pogcvm library should inherit from pogcvmDriver and implement the
+    // virtual methods which are called by the pogcvm implementation to
+    // abstract the transport layer used from the implementation of the pogcvm
     // protocol.
 
-    // Delegates the emission of an SCPEnvelope to the user of SCP. Envelopes
+    // Delegates the emission of an pogcvmEnvelope to the user of pogcvm. Envelopes
     // should be flooded to the network.
-    virtual void emitEnvelope(SCPEnvelope const& envelope) = 0;
+    virtual void emitEnvelope(pogcvmEnvelope const& envelope) = 0;
 
     // methods to hand over the validation and ordering of values and ballots.
 
@@ -178,7 +178,7 @@ class SCPDriver
     // quorum can exchange 4 messages
     virtual std::chrono::milliseconds computeTimeout(uint32 roundNumber);
 
-    // Inform about events happening within the consensus algorithm.
+    // Inform about events happening within the validation algorithm.
 
     // `valueExternalized` is called at most once per slot when the slot
     // externalize its value.
@@ -194,7 +194,7 @@ class SCPDriver
     {
     }
 
-    // the following methods are used for monitoring of the SCP subsystem
+    // the following methods are used for monitoring of the pogcvm subsystem
     // most implementation don't really need to do anything with these
 
     // `updatedCandidateValue` is called every time a new candidate value
@@ -208,25 +208,25 @@ class SCPDriver
     // `startedBallotProtocol` is called when the ballot protocol is started
     // (ie attempts to prepare a new ballot)
     virtual void
-    startedBallotProtocol(uint64 slotIndex, SCPBallot const& ballot)
+    startedBallotProtocol(uint64 slotIndex, pogcvmBallot const& ballot)
     {
     }
 
     // `acceptedBallotPrepared` every time a ballot is accepted as prepared
     virtual void
-    acceptedBallotPrepared(uint64 slotIndex, SCPBallot const& ballot)
+    acceptedBallotPrepared(uint64 slotIndex, pogcvmBallot const& ballot)
     {
     }
 
     // `confirmedBallotPrepared` every time a ballot is confirmed prepared
     virtual void
-    confirmedBallotPrepared(uint64 slotIndex, SCPBallot const& ballot)
+    confirmedBallotPrepared(uint64 slotIndex, pogcvmBallot const& ballot)
     {
     }
 
     // `acceptedCommit` every time a ballot is accepted commit
     virtual void
-    acceptedCommit(uint64 slotIndex, SCPBallot const& ballot)
+    acceptedCommit(uint64 slotIndex, pogcvmBallot const& ballot)
     {
     }
 
@@ -234,7 +234,7 @@ class SCPDriver
     // the current `mBallot` from a set of node that is a transitive quorum for
     // the local node.
     virtual void
-    ballotDidHearFromQuorum(uint64 slotIndex, SCPBallot const& ballot)
+    ballotDidHearFromQuorum(uint64 slotIndex, pogcvmBallot const& ballot)
     {
     }
 

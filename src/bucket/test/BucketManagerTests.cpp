@@ -166,7 +166,7 @@ closeLedger(Application& app, std::optional<SecretKey> skToSignValue)
               hexAbbrev(app.getBucketManager().getBucketList().getHash()));
     auto txSet = std::make_shared<TxSetFrame>(lcl.hash);
     app.getHerder().externalizeValue(txSet, ledgerNum,
-                                     lcl.header.scpValue.closeTime,
+                                     lcl.header.pogcvmValue.closeTime,
                                      emptyUpgradeSteps, skToSignValue);
     return lm.getLastClosedLedgerHeader().hash;
 }
@@ -1469,7 +1469,7 @@ TEST_CASE("bucket persistence over app restart",
 
         // Finally *restart* an app on the same config, and see if it can
         // pick up the bucket list correctly.
-        cfg1.FORCE_SCP = false;
+        cfg1.FORCE_pogcvm = false;
         {
             VirtualClock clock;
             Application::pointer app = Application::create(clock, cfg1, false);

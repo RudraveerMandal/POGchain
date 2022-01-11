@@ -33,7 +33,7 @@ using namespace POGchain::txtest;
   from apply checkValid are not stored in ledger, so there may
   be minor differences between releases (main return code must remain the same,
   as it decides if transaction gets into valid tx set
-  and then as scpValue in ledger or not).
+  and then as pogcvmValue in ledger or not).
 */
 
 namespace
@@ -68,13 +68,13 @@ TEST_CASE("txresults", "[tx][txresults]")
 
     {
         LedgerTxn ltx(app->getLedgerTxnRoot());
-        ltx.loadHeader().current().scpValue.closeTime = 10;
+        ltx.loadHeader().current().pogcvmValue.closeTime = 10;
         ltx.commit();
     }
 
     auto getCloseTime = [&] {
         LedgerTxn ltx(app->getLedgerTxnRoot());
-        return ltx.loadHeader().current().scpValue.closeTime;
+        return ltx.loadHeader().current().pogcvmValue.closeTime;
     };
 
     // set up world

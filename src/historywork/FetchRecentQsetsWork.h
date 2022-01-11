@@ -18,7 +18,7 @@ class FetchRecentQsetsWork : public Work
     std::unique_ptr<TmpDir> mDownloadDir;
     uint32_t mLedgerNum;
     std::shared_ptr<GetHistoryArchiveStateWork> mGetHistoryArchiveStateWork;
-    std::shared_ptr<BasicWork> mDownloadSCPMessagesWork;
+    std::shared_ptr<BasicWork> mDownloadpogcvmMessagesWork;
 
   public:
     FetchRecentQsetsWork(Application& app, uint32_t ledgerNum);

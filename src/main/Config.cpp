@@ -11,8 +11,8 @@
 #include "ledger/LedgerManager.h"
 #include "main/ExternalQueue.h"
 #include "main/POGchainVersion.h"
-#include "scp/LocalNode.h"
-#include "scp/QuorumSetUtils.h"
+#include "pogcvm/LocalNode.h"
+#include "pogcvm/QuorumSetUtils.h"
 #include "util/Fs.h"
 #include "util/GlobalChecks.h"
 #include "util/Logging.h"
@@ -65,7 +65,7 @@ namespace
 // (>50%). If thresholdLevel is ALL_REQUIRED, require 100%, otherwise assume
 // byzantine failures (~67%)
 unsigned int
-computeDefaultThreshold(SCPQuorumSet const& qset,
+computeDefaultThreshold(pogcvmQuorumSet const& qset,
                         ValidationThresholdLevels thresholdLevel)
 {
     unsigned int res = 0;
@@ -117,7 +117,7 @@ Config::Config() : NODE_SEED(SecretKey::random())
     LOADGEN_OP_COUNT_DISTRIBUTION_FOR_TESTING = {};
     CATCHUP_WAIT_MERGES_TX_APPLY_FOR_TESTING = false;
 
-    FORCE_SCP = false;
+    FORCE_pogcvm = false;
     LEDGER_PROTOCOL_VERSION = CURRENT_LEDGER_PROTOCOL_VERSION;
 
     MAXIMUM_LEDGER_CLOSETIME_DRIFT = 50;
@@ -382,7 +382,7 @@ readXdrEnumArray(ConfigItem const& item)
 }
 
 void
-Config::loadQset(std::shared_ptr<cpptoml::table> group, SCPQuorumSet& qset,
+Config::loadQset(std::shared_ptr<cpptoml::table> group, pogcvmQuorumSet& qset,
                  uint32 level)
 {
     if (!group)
@@ -770,7 +770,7 @@ Config::verifyHistoryValidatorsBlocking(
                                    "included in all quorums. If this is really "
                                    "what you want, set UNSAFE_QUORUM=true. Be "
                                    "sure you know what you are doing!");
-            throw std::invalid_argument("SCP unsafe");
+            throw std::invalid_argument("pogcvm unsafe");
         }
     }
 }
@@ -1311,7 +1311,7 @@ Config::processConfig(std::shared_ptr<cpptoml::table> t)
                                "Public Global POGchain Network ; September 2015";
 
         // Validators default to starting the network from local state
-        FORCE_SCP = NODE_IS_VALIDATOR;
+        FORCE_pogcvm = NODE_IS_VALIDATOR;
 
         // process elements that potentially depend on others
         if (t->contains("VALIDATORS"))
@@ -1357,7 +1357,7 @@ Config::processConfig(std::shared_ptr<cpptoml::table> t)
                               "QUORUM_SET unless you also set "
                               "UNSAFE_QUORUM=true. Be sure you know what "
                               "you are doing!");
-                    throw std::invalid_argument("SCP unsafe");
+                    throw std::invalid_argument("pogcvm unsafe");
                 }
             }
             thresholdLevel = ValidationThresholdLevels::
@@ -1561,7 +1561,7 @@ Config::validateConfig(ValidationThresholdLevels thresholdLevel)
                           "Can't have FAILURE_SAFETY=0 unless you also set "
                           "UNSAFE_QUORUM=true. Be sure you know what you are "
                           "doing!");
-                throw std::invalid_argument("SCP unsafe");
+                throw std::invalid_argument("pogcvm unsafe");
             }
 
             if (QUORUM_SET.threshold < minSize)
@@ -1570,7 +1570,7 @@ Config::validateConfig(ValidationThresholdLevels thresholdLevel)
                           "Your THRESHOLD_PERCENTAGE is too low. If you "
                           "really want this set UNSAFE_QUORUM=true. Be "
                           "sure you know what you are doing!");
-                throw std::invalid_argument("SCP unsafe");
+                throw std::invalid_argument("pogcvm unsafe");
             }
         }
     }
@@ -1832,17 +1832,17 @@ Config::setNoPublish()
     }
 }
 
-SCPQuorumSet
+pogcvmQuorumSet
 Config::generateQuorumSetHelper(
     std::vector<ValidatorEntry>::const_iterator begin,
     std::vector<ValidatorEntry>::const_iterator end,
     ValidatorQuality curQuality)
 {
     auto it = begin;
-    SCPQuorumSet ret;
+    pogcvmQuorumSet ret;
     while (it != end && it->mQuality == curQuality)
     {
-        SCPQuorumSet innerSet;
+        pogcvmQuorumSet innerSet;
         auto& vals = innerSet.validators;
         auto it2 = it;
         for (; it2 != end && it2->mHomeDomain == it->mHomeDomain; it2++)
@@ -1892,7 +1892,7 @@ Config::generateQuorumSetHelper(
     return ret;
 }
 
-SCPQuorumSet
+pogcvmQuorumSet
 Config::generateQuorumSet(std::vector<ValidatorEntry> const& validators)
 {
     auto todo = validators;
@@ -1917,7 +1917,7 @@ Config::generateQuorumSet(std::vector<ValidatorEntry> const& validators)
 }
 
 std::string
-Config::toString(SCPQuorumSet const& qset)
+Config::toString(pogcvmQuorumSet const& qset)
 {
     auto json = LocalNode::toJson(
         qset, [&](PublicKey const& k) { return toShortString(k); });

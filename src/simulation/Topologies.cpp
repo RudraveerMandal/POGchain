@@ -20,7 +20,7 @@ Topologies::pair(Simulation::Mode mode, Hash const& networkID,
     SIMULATION_CREATE_NODE(10);
     SIMULATION_CREATE_NODE(11);
 
-    SCPQuorumSet qSet0;
+    pogcvmQuorumSet qSet0;
     qSet0.threshold = 2;
     qSet0.validators.push_back(v10NodeID);
     qSet0.validators.push_back(v11NodeID);
@@ -45,19 +45,19 @@ Topologies::cycle4(Hash const& networkID, Simulation::ConfigGen confGen,
     SIMULATION_CREATE_NODE(2);
     SIMULATION_CREATE_NODE(3);
 
-    SCPQuorumSet qSet0;
+    pogcvmQuorumSet qSet0;
     qSet0.threshold = 2;
     qSet0.validators.push_back(v1NodeID);
     qSet0.validators.push_back(v0NodeID);
-    SCPQuorumSet qSet1;
+    pogcvmQuorumSet qSet1;
     qSet1.threshold = 2;
     qSet1.validators.push_back(v1NodeID);
     qSet1.validators.push_back(v2NodeID);
-    SCPQuorumSet qSet2;
+    pogcvmQuorumSet qSet2;
     qSet2.threshold = 2;
     qSet2.validators.push_back(v2NodeID);
     qSet2.validators.push_back(v3NodeID);
-    SCPQuorumSet qSet3;
+    pogcvmQuorumSet qSet3;
     qSet3.threshold = 2;
     qSet3.validators.push_back(v3NodeID);
     qSet3.validators.push_back(v0NodeID);
@@ -100,7 +100,7 @@ Topologies::separate(int nNodes, double quorumThresoldFraction,
             SecretKey::fromSeed(sha256("NODE_SEED_" + to_string(i))));
     }
 
-    SCPQuorumSet qSet;
+    pogcvmQuorumSet qSet;
     assert(quorumThresoldFraction >= 0.5);
     qSet.threshold =
         min(nNodes, static_cast<int>(ceil(nNodes * quorumThresoldFraction)));
@@ -197,7 +197,7 @@ Topologies::hierarchicalQuorum(
         NodeIDs.push_back(NodeID);
     }
 
-    SCPQuorumSet qSetTopTier;
+    pogcvmQuorumSet qSetTopTier;
     qSetTopTier.threshold = 2;
     for (auto const& NodeID : NodeIDs)
     {
@@ -217,7 +217,7 @@ Topologies::hierarchicalQuorum(
         int cur = 0;
         for (auto const& key : middletierKeys)
         {
-            SCPQuorumSet qSetHere;
+            pogcvmQuorumSet qSetHere;
             // self + any 2 from top tier
             qSetHere.threshold = 2;
             auto pk = key.getPublicKey();
@@ -235,7 +235,7 @@ Topologies::hierarchicalQuorum(
         }
 
         //// the leaf node
-        // SCPQuorumSet leafQSet;
+        // pogcvmQuorumSet leafQSet;
         // leafQSet.threshold = 3;
         // SecretKey leafKey =
         // SecretKey::fromSeed(sha256("NODE_SEED_" + to_string(i) +
@@ -263,7 +263,7 @@ Topologies::hierarchicalQuorumSimplified(
     // each additional node considers themselves as validator
     // with a quorum set that also includes the 
     int n = Size + 1;
-    SCPQuorumSet qSetBuilder;
+    pogcvmQuorumSet qSetBuilder;
     qSetBuilder.threshold = n - (n - 1) / 3;
     vector<NodeID> NodeIDs;
     for (auto const& NodeID : sim->getNodeIDs())
@@ -316,7 +316,7 @@ Topologies::customA(Simulation::Mode mode, Hash const& networkID,
     }
     // A,B,C have the same qset, with all validators
     {
-        SCPQuorumSet q;
+        pogcvmQuorumSet q;
         q.threshold = 4;
         for (auto& k : keys)
         {
@@ -328,7 +328,7 @@ Topologies::customA(Simulation::Mode mode, Hash const& networkID,
     }
     // T
     {
-        SCPQuorumSet q;
+        pogcvmQuorumSet q;
         q.threshold = 4;
         q.validators.emplace_back(keys[B].getPublicKey());
         q.validators.emplace_back(keys[A].getPublicKey());
@@ -339,7 +339,7 @@ Topologies::customA(Simulation::Mode mode, Hash const& networkID,
     }
     // E
     {
-        SCPQuorumSet q;
+        pogcvmQuorumSet q;
         q.threshold = 3;
         q.validators.emplace_back(keys[E].getPublicKey());
         q.validators.emplace_back(keys[A].getPublicKey());
@@ -349,7 +349,7 @@ Topologies::customA(Simulation::Mode mode, Hash const& networkID,
     }
     // S
     {
-        SCPQuorumSet q;
+        pogcvmQuorumSet q;
         q.threshold = 4;
         q.validators.emplace_back(keys[S].getPublicKey());
         q.validators.emplace_back(keys[E].getPublicKey());
@@ -400,7 +400,7 @@ Topologies::asymmetric(Simulation::Mode mode, Hash const& networkID,
 
     // A,B,C,D have the same qset, with all validators
     {
-        SCPQuorumSet q;
+        pogcvmQuorumSet q;
         q.threshold = 5;
         for (auto& k : keys)
         {

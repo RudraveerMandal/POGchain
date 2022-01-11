@@ -24,9 +24,9 @@ namespace POGchain
 
 class Tracker;
 class TxSetFrame;
-struct SCPQuorumSet;
+struct pogcvmQuorumSet;
 using TxSetFramePtr = std::shared_ptr<TxSetFrame>;
-using SCPQuorumSetPtr = std::shared_ptr<SCPQuorumSet>;
+using pogcvmQuorumSetPtr = std::shared_ptr<pogcvmQuorumSet>;
 using AskPeer = std::function<void(Peer::pointer, Hash)>;
 
 /**
@@ -52,14 +52,14 @@ class ItemFetcher : private NonMovableOrCopyable
      * Fetch data identified by @p hash and needed by @p envelope. Multiple
      * envelopes may require one set of data.
      */
-    void fetch(Hash const& itemHash, SCPEnvelope const& envelope);
+    void fetch(Hash const& itemHash, pogcvmEnvelope const& envelope);
 
     /**
      * Stops fetching data identified by @p hash for @p envelope. If other
      * envelopes requires this data, it is still being fetched, but
      * @p envelope will not be notified about it.
      */
-    void stopFetch(Hash const& itemHash, SCPEnvelope const& envelope);
+    void stopFetch(Hash const& itemHash, pogcvmEnvelope const& envelope);
 
     /**
      * Return biggest slot index seen for given hash. If 0, then given hash
@@ -70,7 +70,7 @@ class ItemFetcher : private NonMovableOrCopyable
     /**
      * Return envelopes that require data identified by @p hash.
      */
-    std::vector<SCPEnvelope> fetchingFor(Hash const& itemHash) const;
+    std::vector<pogcvmEnvelope> fetchingFor(Hash const& itemHash) const;
 
     /**
      * Called periodically to remove old envelopes from list (with ledger id

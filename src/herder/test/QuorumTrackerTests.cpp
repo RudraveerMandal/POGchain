@@ -7,7 +7,7 @@
 #include "lib/catch.hpp"
 #include "main/Application.h"
 #include "main/Config.h"
-#include "scp/SCP.h"
+#include "pogcvm/pogcvm.h"
 #include "test/TestUtils.h"
 #include "test/test.h"
 #include "xdr/POGchain-ledger.h"
@@ -28,7 +28,7 @@ testQuorumTracker()
     }
 
     auto buildQSet = [&](int i) {
-        SCPQuorumSet q;
+        pogcvmQuorumSet q;
         q.threshold = 2;
         q.validators.emplace_back(otherKeys[i].getPublicKey());
         q.validators.emplace_back(otherKeys[i + 1].getPublicKey());
@@ -48,7 +48,7 @@ testQuorumTracker()
     auto* herder = static_cast<HerderImpl*>(&app->getHerder());
     auto* penEnvs = &herder->getPendingEnvelopes();
 
-    // allow SCP messages from other slots to be processed
+    // allow pogcvm messages from other slots to be processed
     herder->lostSync();
 
     auto valSigner = SecretKey::pseudoRandomForTesting();
@@ -59,8 +59,8 @@ testQuorumTracker()
         TxSetFramePtr mTxSet;
     };
 
-    auto recvEnvelope = [&](SCPEnvelope envelope, uint64 slotID,
-                            SecretKey const& k, SCPQuorumSet const& qSet,
+    auto recvEnvelope = [&](pogcvmEnvelope envelope, uint64 slotID,
+                            SecretKey const& k, pogcvmQuorumSet const& qSet,
                             std::vector<ValuesTxSet> const& pp) {
         // herder must want the TxSet before receiving it, so we are sending it
         // fake envelope
@@ -68,19 +68,19 @@ testQuorumTracker()
         auto qSetH = sha256(xdr::xdr_to_opaque(qSet));
         envelope.statement.nodeID = k.getPublicKey();
         envelope.signature = k.sign(xdr::xdr_to_opaque(
-            app->getNetworkID(), ENVELOPE_TYPE_SCP, envelope.statement));
-        herder->recvSCPEnvelope(envelope);
-        herder->recvSCPQuorumSet(qSetH, qSet);
+            app->getNetworkID(), ENVELOPE_TYPE_pogcvm, envelope.statement));
+        herder->recvpogcvmEnvelope(envelope);
+        herder->recvpogcvmQuorumSet(qSetH, qSet);
         for (auto& p : pp)
         {
             herder->recvTxSet(p.mTxSet->getContentsHash(), *p.mTxSet);
         }
     };
     auto recvNom = [&](uint64 slotID, SecretKey const& k,
-                       SCPQuorumSet const& qSet,
+                       pogcvmQuorumSet const& qSet,
                        std::vector<ValuesTxSet> const& pp) {
-        SCPEnvelope envelope;
-        envelope.statement.pledges.type(SCP_ST_NOMINATE);
+        pogcvmEnvelope envelope;
+        envelope.statement.pledges.type(pogcvm_ST_NOMINATE);
         auto& nom = envelope.statement.pledges.nominate();
 
         std::set<Value> values;
@@ -94,9 +94,9 @@ testQuorumTracker()
         recvEnvelope(envelope, slotID, k, qSet, pp);
     };
     auto recvExternalize = [&](uint64 slotID, SecretKey const& k,
-                               SCPQuorumSet const& qSet, ValuesTxSet const& v) {
-        SCPEnvelope envelope;
-        envelope.statement.pledges.type(SCP_ST_EXTERNALIZE);
+                               pogcvmQuorumSet const& qSet, ValuesTxSet const& v) {
+        pogcvmEnvelope envelope;
+        envelope.statement.pledges.type(pogcvm_ST_EXTERNALIZE);
         auto& ext = envelope.statement.pledges.externalize();
         ext.commit.counter = UINT32_MAX;
         ext.commit.value = v.mSignedV;
@@ -111,7 +111,7 @@ testQuorumTracker()
         auto const& lcl = app->getLedgerManager().getLastClosedLedgerHeader();
         auto txSet = std::make_shared<TxSetFrame>(lcl.hash);
         POGchainValue sv = herder->makePOGchainValue(
-            txSet->getContentsHash(), lcl.header.scpValue.closeTime + i,
+            txSet->getContentsHash(), lcl.header.pogcvmValue.closeTime + i,
             emptyUpgradeSteps, valSigner);
         auto v = xdr::xdr_to_opaque(sv);
         return ValuesTxSet{v, txSet};
@@ -199,13 +199,13 @@ TEST_CASE("quorum tracker closest validators", "[quorum][herder]")
 
     auto makeQset = [&](std::vector<int> const& validatorIndexes,
                         int selfIndex) {
-        SCPQuorumSet q;
+        pogcvmQuorumSet q;
         q.threshold = static_cast<uint32>(validatorIndexes.size()) + 1;
         std::transform(validatorIndexes.begin(), validatorIndexes.end(),
                        std::back_inserter(q.validators),
                        [&](int i) { return otherKeys[i]; });
         q.validators.push_back(otherKeys[self]);
-        return std::make_shared<SCPQuorumSet>(q);
+        return std::make_shared<pogcvmQuorumSet>(q);
     };
 
     auto selfQSet = makeQset({2, 1}, self);
@@ -215,10 +215,10 @@ TEST_CASE("quorum tracker closest validators", "[quorum][herder]")
     Application::pointer app = createTestApplication(*clock, cfg);
 
     auto* herder = static_cast<HerderImpl*>(&app->getHerder());
-    auto const localNodeID = herder->getSCP().getLocalNodeID();
+    auto const localNodeID = herder->getpogcvm().getLocalNodeID();
     QuorumTracker qt(localNodeID);
 
-    auto lookup = [&](NodeID const& node) -> SCPQuorumSetPtr {
+    auto lookup = [&](NodeID const& node) -> pogcvmQuorumSetPtr {
         if (node == localNodeID)
         {
             return selfQSet;
@@ -239,7 +239,7 @@ TEST_CASE("quorum tracker closest validators", "[quorum][herder]")
             return makeQset({2}, 4);
         case 3:
         case 6:
-            return std::make_shared<SCPQuorumSet>();
+            return std::make_shared<pogcvmQuorumSet>();
         default:
             abort();
         }
@@ -284,7 +284,7 @@ TEST_CASE("quorum tracker closest validators", "[quorum][herder]")
     SECTION("expand")
     {
         // Rebuild only knowing about "self"
-        qt.rebuild([&](NodeID const& node) -> SCPQuorumSetPtr {
+        qt.rebuild([&](NodeID const& node) -> pogcvmQuorumSetPtr {
             if (node == cfg.NODE_SEED.getPublicKey())
             {
                 return selfQSet;

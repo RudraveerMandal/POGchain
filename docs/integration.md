@@ -30,7 +30,7 @@ As part of this transition, POGchain records:
 * the ledger header for the new ledger
 * the transactions that got applied as part of that transition
 * the corresponding transaction results
-* SCP messages recorded by the validator during the consensus round
+* pogcvm messages recorded by the validator during the validation round
 * meta-data describing fine grain changes of ledger entries (creation, updates, deletes)
   * NB: the meta-data presents changes to ledger entries in a simple to process format (old value/new value)
 
@@ -153,7 +153,7 @@ The data that needs to be processed as ledger closes is, in order:
 * ledger upgrades "meta"
   * contains ledger entries before/after of ledger entries that potentially get modified by upgrades
   * contains network wide settings upgrade information (protocol version, base fee, etc)
-* other data (SCP messages)
+* other data (pogcvm messages)
 
 In addition to being a lot more detailed, unlike buckets, the meta data contains both previous and new state of ledger entries; this allows to reason locally about changes without having to actually maintain an actual copy of the ledger (if it's not needed).
 

@@ -1463,11 +1463,11 @@ LedgerTxn::Impl::loadBestOffer(LedgerTxn& self, Asset const& buying,
 
     try
     {
-        std::shared_ptr<OfferDescriptor const> descPtr;
+        std::shared_ptr<OfferDescriptor const> depogcvmtr;
         if (le)
         {
             auto const& oe = le->data.offer();
-            descPtr = std::make_shared<OfferDescriptor const>(
+            depogcvmtr = std::make_shared<OfferDescriptor const>(
                 OfferDescriptor{oe.price, oe.offerID});
         }
 
@@ -1518,7 +1518,7 @@ LedgerTxn::Impl::loadBestOffer(LedgerTxn& self, Asset const& buying,
         //   then update (P, W) to (P, le) if le > W and do nothing otherwise
 
         // updateWorstBestOffer has the strong exception safety guarantee
-        updateWorstBestOffer({buying, selling}, descPtr);
+        updateWorstBestOffer({buying, selling}, depogcvmtr);
     }
     catch (...)
     {

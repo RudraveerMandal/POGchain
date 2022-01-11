@@ -37,8 +37,8 @@ StateSnapshot::StateSnapshot(Application& app, HistoryArchiveState const& state)
     , mTransactionResultSnapFile(std::make_shared<FileTransferInfo>(
           mSnapDir, HISTORY_FILE_TYPE_RESULTS, mLocalState.currentLedger))
 
-    , mSCPHistorySnapFile(std::make_shared<FileTransferInfo>(
-          mSnapDir, HISTORY_FILE_TYPE_SCP, mLocalState.currentLedger))
+    , mpogcvmHistorySnapFile(std::make_shared<FileTransferInfo>(
+          mSnapDir, HISTORY_FILE_TYPE_pogcvm, mLocalState.currentLedger))
 
 {
     if (mLocalState.currentBuckets.size() != BucketList::kNumLevels)
@@ -61,20 +61,20 @@ StateSnapshot::writeHistoryBlocks() const
     // The current "history block" is stored in _four_ files, one just ledger
     // headers, one TransactionHistoryEntry (which contain txSets),
     // one TransactionHistoryResultEntry containing transaction set results and
-    // one (optional) SCPHistoryEntry containing the SCP messages used to close.
+    // one (optional) pogcvmHistoryEntry containing the pogcvm messages used to close.
     // All files are streamed out of the database, entry-by-entry.
-    size_t nbSCPMessages;
+    size_t nbpogcvmMessages;
     uint32_t begin, count;
     size_t nHeaders;
     {
         bool doFsync = !mApp.getConfig().DISABLE_XDR_FSYNC;
         asio::io_context& ctx = mApp.getClock().getIOContext();
         XDROutputFileStream ledgerOut(ctx, doFsync), txOut(ctx, doFsync),
-            txResultOut(ctx, doFsync), scpHistory(ctx, doFsync);
+            txResultOut(ctx, doFsync), pogcvmHistory(ctx, doFsync);
         ledgerOut.open(mLedgerSnapFile->localPath_nogz());
         txOut.open(mTransactionSnapFile->localPath_nogz());
         txResultOut.open(mTransactionResultSnapFile->localPath_nogz());
-        scpHistory.open(mSCPHistorySnapFile->localPath_nogz());
+        pogcvmHistory.open(mpogcvmHistorySnapFile->localPath_nogz());
 
         auto& hm = mApp.getHistoryManager();
         begin = hm.firstLedgerInCheckpointContaining(mLocalState.currentLedger);
@@ -93,17 +93,17 @@ StateSnapshot::writeHistoryBlocks() const
                    mTransactionSnapFile->localPath_nogz(),
                    mTransactionResultSnapFile->localPath_nogz());
 
-        nbSCPMessages = HerderPersistence::copySCPHistoryToStream(
-            mApp.getDatabase(), sess, begin, count, scpHistory);
+        nbpogcvmMessages = HerderPersistence::copypogcvmHistoryToStream(
+            mApp.getDatabase(), sess, begin, count, pogcvmHistory);
 
-        CLOG_DEBUG(History, "Wrote {} SCP messages to {}", nbSCPMessages,
-                   mSCPHistorySnapFile->localPath_nogz());
+        CLOG_DEBUG(History, "Wrote {} pogcvm messages to {}", nbpogcvmMessages,
+                   mpogcvmHistorySnapFile->localPath_nogz());
     }
 
-    if (nbSCPMessages == 0)
+    if (nbpogcvmMessages == 0)
     {
         // don't upload empty files
-        std::remove(mSCPHistorySnapFile->localPath_nogz().c_str());
+        std::remove(mpogcvmHistorySnapFile->localPath_nogz().c_str());
     }
 
     // When writing checkpoint 0x3f (63) we will have written 63 headers because
@@ -143,7 +143,7 @@ StateSnapshot::differingHASFiles(HistoryArchiveState const& other)
     addIfExists(mLedgerSnapFile);
     addIfExists(mTransactionSnapFile);
     addIfExists(mTransactionResultSnapFile);
-    addIfExists(mSCPHistorySnapFile);
+    addIfExists(mpogcvmHistorySnapFile);
 
     for (auto const& hash : mLocalState.differingBuckets(other))
     {

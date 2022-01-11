@@ -28,7 +28,7 @@ TEST_CASE("LedgerCloseMetaStream file descriptor - LIVE_NODE",
 {
     // Live reqires a multinode simulation, as we're not allowed to run a
     // validator and record metadata streams at the same time (to avoid the
-    // unbounded-latency stream-write step): N nodes participating in consensus,
+    // unbounded-latency stream-write step): N nodes participating in validation,
     // and two watching and streaming metadata -- the second one using
     // EXPERIMENTAL_PRECAUTION_DELAY_META.
 
@@ -65,7 +65,7 @@ TEST_CASE("LedgerCloseMetaStream file descriptor - LIVE_NODE",
         // Watcher, EXPERIMENTAL_PRECAUTION_DELAY_META
         SIMULATION_CREATE_NODE(Node5);
 
-        SCPQuorumSet qSet;
+        pogcvmQuorumSet qSet;
         qSet.threshold = 3;
         qSet.validators.push_back(vNode1NodeID);
         qSet.validators.push_back(vNode2NodeID);
@@ -80,9 +80,9 @@ TEST_CASE("LedgerCloseMetaStream file descriptor - LIVE_NODE",
         // Step 2: open writable files and pass them to configs 4 and 5
         // (watchers).
         cfg4.NODE_IS_VALIDATOR = false;
-        cfg4.FORCE_SCP = false;
+        cfg4.FORCE_pogcvm = false;
         cfg5.NODE_IS_VALIDATOR = false;
-        cfg5.FORCE_SCP = false;
+        cfg5.FORCE_pogcvm = false;
 #ifdef _WIN32
         cfg4.METADATA_OUTPUT_STREAM = path;
         cfg5.METADATA_OUTPUT_STREAM = pathSafe;
@@ -145,7 +145,7 @@ TEST_CASE("LedgerCloseMetaStream file descriptor - LIVE_NODE",
                                 *app, ledgerToCorrupt,
                                 app->getLedgerManager()
                                         .getLastClosedLedgerHeader()
-                                        .header.scpValue.closeTime +
+                                        .header.pogcvmValue.closeTime +
                                     1);
                         }
 
@@ -254,7 +254,7 @@ TEST_CASE("LedgerCloseMetaStream file descriptor - REPLAY_IN_MEMORY",
     {
         auto cfg = tCfg.configure(cfg1, false);
         cfg.NODE_IS_VALIDATOR = false;
-        cfg.FORCE_SCP = false;
+        cfg.FORCE_pogcvm = false;
         cfg.RUN_STANDALONE = true;
         cfg.setInMemoryMode();
         cfg.EXPERIMENTAL_PRECAUTION_DELAY_META = delayMeta;
@@ -283,7 +283,7 @@ TEST_CASE("LedgerCloseMetaStream file descriptor - REPLAY_IN_MEMORY",
     //
     // The EXPERIMENTAL_PRECAUTION_DELAY_META case should still have streamed
     // the latest meta, because catchup should have validated that ledger's hash
-    // by validating a chain of hashes back from one obtained from consensus.
+    // by validating a chain of hashes back from one obtained from validation.
     XDRInputFileStream stream;
     stream.open(path);
     LedgerCloseMeta lcm;

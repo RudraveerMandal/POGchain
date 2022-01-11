@@ -10,7 +10,7 @@ It is organized as a reverse chronological timeline of releases.
 
 ## Protocol updates
 
-* Changes to SCP.
+* Changes to pogcvm.
 * Changes to the POGchain Protocol (anything that modifies how the distributed ledger functions, including historical data).
 
 ## Security issues
@@ -47,7 +47,7 @@ It then follows that:
 
 * `Overlay` - subsystem used by peers to communicate to each other
 * `Herder` - subsystem coordinating all other subsystems
-* `SCP` - subsystem implementing SCP
+* `pogcvm` - subsystem implementing pogcvm
 * `Ledger` - Ledger management including transaction subsystem
 * `History` - History subsystem
 
@@ -85,14 +85,14 @@ It then follows that:
 
 * `Ledger` - protocol - CAP0023 - Two-Part Payments with ClaimableBalanceEntry
 * `Ledger` - protocol - CAP0033 - Sponsored Reserve
-* `SCP` - protocol - CAP0034 - Preserve Transaction-Set/Close-Time Affinity During Nomination
-* `SCP` - security - fix an edge case that could lead to nominating an invalid close time
+* `pogcvm` - protocol - CAP0034 - Preserve Transaction-Set/Close-Time Affinity During Nomination
+* `pogcvm` - security - fix an edge case that could lead to nominating an invalid close time
     * exploited: no
     * mitigation: code fix
 
 ## v13.2.0 (2020-06-30)
 
-* `SCP` - security - fixed crash that could be triggered when receiving out of order messages at the wrong time
+* `pogcvm` - security - fixed crash that could be triggered when receiving out of order messages at the wrong time
     * exploited: no
     * mitigation: code fix
 
@@ -113,7 +113,7 @@ It then follows that:
 
 ## v12.1.0 (2019-10-24)
 
-* `SCP` - protocol - added `CRITICAL` quality to quorum config generator
+* `pogcvm` - protocol - added `CRITICAL` quality to quorum config generator
 
 ## v12.0.0 (2019-09-30)
 
@@ -129,9 +129,9 @@ It then follows that:
 
 ## v11.2.0 (2019-06-27)
 
-* `SCP` - protocol - switch to auto generated quorum configuration
-* `SCP` - protocol - persist SCP messages across restarts, increasing the chance of propagating externalize messages
-* `SCP` - protocol - added quorum intersection monitoring
+* `pogcvm` - protocol - switch to auto generated quorum configuration
+* `pogcvm` - protocol - persist pogcvm messages across restarts, increasing the chance of propagating externalize messages
+* `pogcvm` - protocol - added quorum intersection monitoring
 * `Ledger` - protocol - changed to reject a ledger containing an unknown upgrade instead of corrupting the local ledger state
 
 ## v11.1.0 (2019-05-23)
@@ -139,7 +139,7 @@ It then follows that:
 * `Ledger` - security - crash when processing bad archive files
     * exploited: no
     * mitigation: code fix
-* `Overlay` - security - ignore SCP messages from a previous incarnation of the network (testnet reset)
+* `Overlay` - security - ignore pogcvm messages from a previous incarnation of the network (testnet reset)
     * exploited: no
     * mitigation: code fix
 
@@ -156,7 +156,7 @@ It then follows that:
     * mitigation: code fix
     * bug bounty: [ahook](https://hackerone.com/ahook)
 
-* `SCP` - protocol - attach validator ID to values introduced by that validator
+* `pogcvm` - protocol - attach validator ID to values introduced by that validator
 
 ## v10.0.0 (2018-09-05)
 
@@ -185,7 +185,7 @@ of a signer to more than 255.
 
 * `Herder` - protocol - properly compute next ledger start time (could lead to rounds starting too early).
 
-* `SCP` - protocol - make timing out of the ballot counters less aggressive (reduce overall SCP time to close a ledger).
+* `pogcvm` - protocol - make timing out of the ballot counters less aggressive (reduce overall pogcvm time to close a ledger).
 
 ## v9.1.0 (2018-01-18)
 
@@ -197,7 +197,7 @@ of a signer to more than 255.
 
 ## v9.0.1 (2017-12-20)
 
-* `SCP` - protocol - allow values to be validated differently during nomination and ballot protocol (used to be potentially more strict for the values generated during nomination)
+* `pogcvm` - protocol - allow values to be validated differently during nomination and ballot protocol (used to be potentially more strict for the values generated during nomination)
 
 * `Herder` - protocol - change the way upgrades are managed to be "one time triggers" instead of being on all the time
 
@@ -297,7 +297,7 @@ of a signer to more than 255.
 
 * `Ledger` - protocol - properly set `lastModifiedLedgerSeq` for `DataEntry`
 
-* `SCP` - protocol - limit number of validators in a quorum set to a smaller value
+* `pogcvm` - protocol - limit number of validators in a quorum set to a smaller value
 
 * `Overlay` - security - node would cache data that it didn't request, potentially purging data that it would need from cache (DDoS)
     * exploited: no
@@ -315,13 +315,13 @@ of a signer to more than 255.
 
 ## v0.3.2 (2015-11-23)
 
-* `SCP` - security - bad sequence of messages could lead to node crashing (DDoS)
+* `pogcvm` - security - bad sequence of messages could lead to node crashing (DDoS)
     * exploited: no
     * mitigation: code fix
 
 ## v0.3.1 (2015-11-18)
 
-* `SCP` - protocol - adjustments based on the whitepaper updates as of November 17 2015
+* `pogcvm` - protocol - adjustments based on the whitepaper updates as of November 17 2015
 
 ## v0.3.0 (2015-11-16)
 
@@ -329,7 +329,7 @@ of a signer to more than 255.
     * exploited: no
     * mitigation: code fix
 
-* `SCP` - protocol - adjustments based on the whitepaper updates as of November 2015
+* `pogcvm` - protocol - adjustments based on the whitepaper updates as of November 2015
 
 
 ## v0.2.5 (2015-11-06)
@@ -347,4 +347,4 @@ of a signer to more than 255.
     * exploited: no
     * mitigation: code fix
 
-* `SCP` - protocol - additional validation of quorum sets
+* `pogcvm` - protocol - additional validation of quorum sets

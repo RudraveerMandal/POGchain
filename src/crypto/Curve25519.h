@@ -17,7 +17,7 @@ namespace POGchain
 // equivalence between this curve and Ed25519 (used in signatures, see
 // SecretKey.h) we use Curve25519 keys _only_ for ECDH shared-key-agreement
 // between peers, as part of the p2p overlay system (see
-// overlay/PeerAuth.h), not the transaction-signing or SCP-message-signing
+// overlay/PeerAuth.h), not the transaction-signing or pogcvm-message-signing
 // systems. Signatures use Ed25519 keys.
 //
 // Do not mix keys between these subsystems: i.e. do not convert a signing

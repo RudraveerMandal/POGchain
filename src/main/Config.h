@@ -57,7 +57,7 @@ class Config : public std::enable_shared_from_this<Config>
     };
 
     void validateConfig(ValidationThresholdLevels thresholdLevel);
-    void loadQset(std::shared_ptr<cpptoml::table> group, SCPQuorumSet& qset,
+    void loadQset(std::shared_ptr<cpptoml::table> group, pogcvmQuorumSet& qset,
                   uint32 level);
 
     void processConfig(std::shared_ptr<cpptoml::table>);
@@ -86,12 +86,12 @@ class Config : public std::enable_shared_from_this<Config>
     UnorderedMap<std::string, ValidatorQuality>
     parseDomainsQuality(std::shared_ptr<cpptoml::base> domainsQuality);
 
-    static SCPQuorumSet
+    static pogcvmQuorumSet
     generateQuorumSetHelper(std::vector<ValidatorEntry>::const_iterator begin,
                             std::vector<ValidatorEntry>::const_iterator end,
                             ValidatorQuality curQuality);
 
-    static SCPQuorumSet
+    static pogcvmQuorumSet
     generateQuorumSet(std::vector<ValidatorEntry> const& validators);
 
     void addSelfToValidators(
@@ -124,13 +124,13 @@ class Config : public std::enable_shared_from_this<Config>
     // application config
 
     // The default way POGchain starts is to load the state from disk and
-    // start a consensus round (if node is validating), then maybe trigger
+    // start a validation round (if node is validating), then maybe trigger
     // catchup. If you need different behavior you need to use new-db or
-    // --wait-for-consensus option which sets the following flag to false:
+    // --wait-for-validation option which sets the following flag to false:
 
-    // SCP will start running immediately using the current local state to
-    // participate in consensus
-    bool FORCE_SCP;
+    // pogcvm will start running immediately using the current local state to
+    // participate in validation
+    bool FORCE_pogcvm;
 
     // This is a mode for testing. It prevents you from trying to connect to
     // other peers
@@ -203,7 +203,7 @@ class Config : public std::enable_shared_from_this<Config>
     // OP_APPLY_SLEEP_TIME_WEIGHT_FOR_TESTING[i] divided by
     // (OP_APPLY_SLEEP_TIME_WEIGHT_FOR_TESTING[0] +
     // OP_APPLY_SLEEP_TIME_WEIGHT_FOR_TESTING[1] + ...) for each i. These
-    // options are only for consensus and overlay simulation testing. These two
+    // options are only for validation and overlay simulation testing. These two
     // must be used together.
     std::vector<std::chrono::microseconds>
         OP_APPLY_SLEEP_TIME_DURATION_FOR_TESTING;
@@ -235,7 +235,7 @@ class Config : public std::enable_shared_from_this<Config>
     bool EXPERIMENTAL_PRECAUTION_DELAY_META;
 
     // A config parameter that stores historical data, such as transactions,
-    // fees, and scp history in the database
+    // fees, and pogcvm history in the database
     bool MODE_STORES_HISTORY_MISC;
 
     // A config parameter that stores ledger headers in the database
@@ -305,7 +305,7 @@ class Config : public std::enable_shared_from_this<Config>
     // NODE_IS_VALIDATOR, as its typical use writing to a pipe with a reader
     // process on the other end introduces a potentially-unbounded synchronous
     // delay in closing a ledger, and should not be used on a node participating
-    // in consensus, only a passive "watcher" node.
+    // in validation, only a passive "watcher" node.
     std::string METADATA_OUTPUT_STREAM;
 
     // Number of ledgers worth of transaction metadata to preserve on disk for
@@ -388,10 +388,10 @@ class Config : public std::enable_shared_from_this<Config>
     // process-management config
     size_t MAX_CONCURRENT_SUBPROCESSES;
 
-    // SCP config
+    // pogcvm config
     SecretKey NODE_SEED;
     bool NODE_IS_VALIDATOR;
-    POGchain::SCPQuorumSet QUORUM_SET;
+    POGchain::pogcvmQuorumSet QUORUM_SET;
     // this node's home domain
     std::string NODE_HOME_DOMAIN;
 
@@ -467,7 +467,7 @@ class Config : public std::enable_shared_from_this<Config>
     void setNoPublish();
 
     // function to stringify a quorum set
-    std::string toString(SCPQuorumSet const& qset);
+    std::string toString(pogcvmQuorumSet const& qset);
 
     // A special name to be used for stdin in stead of a file name in command
     // line arguments.

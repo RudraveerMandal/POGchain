@@ -209,14 +209,14 @@ ApplyCheckpointWork::getNextLedgerCloseData()
     // sense) in CATCHUP_VERIFY phase; we now need to check that the
     // txhash we're about to apply is the one denoted by that ledger
     // header.
-    if (header.scpValue.txSetHash != txset->getContentsHash())
+    if (header.pogcvmValue.txSetHash != txset->getContentsHash())
     {
         throw std::runtime_error(
             fmt::format(FMT_STRING("replay txset hash differs from txset hash "
                                    "in replay ledger: hash "
                                    "for txset for {:d} is {:s}, expected {:s}"),
                         header.ledgerSeq, hexAbbrev(txset->getContentsHash()),
-                        hexAbbrev(header.scpValue.txSetHash)));
+                        hexAbbrev(header.pogcvmValue.txSetHash)));
     }
 
 #ifdef BUILD_TESTS
@@ -234,7 +234,7 @@ ApplyCheckpointWork::getNextLedgerCloseData()
 #endif
 
     return std::make_shared<LedgerCloseData>(
-        header.ledgerSeq, txset, header.scpValue,
+        header.ledgerSeq, txset, header.pogcvmValue,
         std::make_optional<Hash>(mHeaderHistoryEntry.hash));
 }
 

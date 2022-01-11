@@ -569,7 +569,7 @@ TEST_CASE("claimableBalance", "[tx][claimablebalance]")
                     // closeLedgerOn will move close time forward by a day
                     // (86400 seconds)
                     nextCloseTime =
-                        ltx.loadHeader().current().scpValue.closeTime +
+                        ltx.loadHeader().current().pogcvmValue.closeTime +
                         dayInSeconds;
                 }
 

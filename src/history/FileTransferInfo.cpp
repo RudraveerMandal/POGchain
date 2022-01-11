@@ -12,7 +12,7 @@ char const* HISTORY_FILE_TYPE_BUCKET = "bucket";
 char const* HISTORY_FILE_TYPE_LEDGER = "ledger";
 char const* HISTORY_FILE_TYPE_TRANSACTIONS = "transactions";
 char const* HISTORY_FILE_TYPE_RESULTS = "results";
-char const* HISTORY_FILE_TYPE_SCP = "scp";
+char const* HISTORY_FILE_TYPE_pogcvm = "pogcvm";
 
 std::string
 FileTransferInfo::getLocalDir(TmpDir const& localRoot) const

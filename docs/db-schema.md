@@ -31,7 +31,7 @@ ledgerhash | CHARACTER(64) PRIMARY KEY | Hash of the ledger header (HEX)
 prevhash | CHARACTER(64) NOT NULL | previousLedgerHash (HEX)
 bucketlisthash | CHARACTER(64) NOT NULL | (HEX)
 ledgerseq | INT UNIQUE CHECK (ledgerseq >= 0) |
-closetime | BIGINT NOT NULL CHECK (closetime >= 0) | scpValue.closeTime
+closetime | BIGINT NOT NULL CHECK (closetime >= 0) | pogcvmValue.closeTime
 data | TEXT NOT NULL | Entire LedgerHeader (XDR)
 
 ## accounts
@@ -161,7 +161,7 @@ txindex | INT NOT NULL | Apply order (per ledger, 1)
 txchanges | TEXT NOT NULL | LedgerEntryChanges (XDR)
 (ledgerseq, txindex) | PRIMARY KEY |
 
-## scphistory
+## pogcvmhistory
 
 Defined in [`src/herder/HerderPersistenceImpl.cpp`](/src/herder/HerderPersistenceImpl.cpp)
 
@@ -171,7 +171,7 @@ nodeid | CHARACTER(56) NOT NULL | (STRKEY)
 ledgerseq | INT NOT NULL CHECK (ledgerseq >= 0) | Ledger this transaction got applied
 envelope | TEXT NOT NULL | (XDR)
 
-## scpquorums
+## pogcvmquorums
 
 Defined in [`src/herder/HerderPersistenceImpl.cpp`](/src/herder/HerderPersistenceImpl.cpp)
 

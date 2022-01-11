@@ -81,7 +81,7 @@ class VirtualClock
     // We also provide a "system clock" interface. This is _not_ related to the
     // steady_clock / time_point time -- system_time_points are wall/calendar
     // time which may move forwards or backwards as NTP adjusts it. It should be
-    // used only for things like nomination of a ledger close time (in consensus
+    // used only for things like nomination of a ledger close time (in validation
     // with other peers), or interfacing to other programs' notions of absolute
     // time. Not calculating durations / timers / local-event deadlines.
     typedef std::chrono::system_clock::time_point system_time_point;

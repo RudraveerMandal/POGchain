@@ -7,7 +7,7 @@
 #include "crypto/Hex.h"
 #include "crypto/SecretKey.h"
 #include "lib/json/json.h"
-#include "scp/QuorumSetUtils.h"
+#include "pogcvm/QuorumSetUtils.h"
 #include "util/GlobalChecks.h"
 #include "util/Logging.h"
 #include "util/XDROperators.h"
@@ -20,37 +20,37 @@
 namespace POGchain
 {
 LocalNode::LocalNode(NodeID const& nodeID, bool isValidator,
-                     SCPQuorumSet const& qSet, SCPDriver& driver)
+                     pogcvmQuorumSet const& qSet, pogcvmDriver& driver)
     : mNodeID(nodeID), mIsValidator(isValidator), mQSet(qSet), mDriver(driver)
 {
     normalizeQSet(mQSet);
     mQSetHash = driver.getHashOf({xdr::xdr_to_opaque(mQSet)});
 
-    CLOG_INFO(SCP, "LocalNode::LocalNode@{} qSet: {}",
+    CLOG_INFO(pogcvm, "LocalNode::LocalNode@{} qSet: {}",
               driver.toShortString(mNodeID), hexAbbrev(mQSetHash));
 
-    mSingleQSet = std::make_shared<SCPQuorumSet>(buildSingletonQSet(mNodeID));
+    mSingleQSet = std::make_shared<pogcvmQuorumSet>(buildSingletonQSet(mNodeID));
     gSingleQSetHash = driver.getHashOf({xdr::xdr_to_opaque(*mSingleQSet)});
 }
 
-SCPQuorumSet
+pogcvmQuorumSet
 LocalNode::buildSingletonQSet(NodeID const& nodeID)
 {
-    SCPQuorumSet qSet;
+    pogcvmQuorumSet qSet;
     qSet.threshold = 1;
     qSet.validators.emplace_back(nodeID);
     return qSet;
 }
 
 void
-LocalNode::updateQuorumSet(SCPQuorumSet const& qSet)
+LocalNode::updateQuorumSet(pogcvmQuorumSet const& qSet)
 {
     ZoneScoped;
     mQSetHash = mDriver.getHashOf({xdr::xdr_to_opaque(qSet)});
     mQSet = qSet;
 }
 
-SCPQuorumSet const&
+pogcvmQuorumSet const&
 LocalNode::getQuorumSet()
 {
     return mQSet;
@@ -62,14 +62,14 @@ LocalNode::getQuorumSetHash()
     return mQSetHash;
 }
 
-SCPQuorumSetPtr
+pogcvmQuorumSetPtr
 LocalNode::getSingletonQSet(NodeID const& nodeID)
 {
-    return std::make_shared<SCPQuorumSet>(buildSingletonQSet(nodeID));
+    return std::make_shared<pogcvmQuorumSet>(buildSingletonQSet(nodeID));
 }
 
 bool
-LocalNode::forAllNodes(SCPQuorumSet const& qset,
+LocalNode::forAllNodes(pogcvmQuorumSet const& qset,
                        std::function<bool(NodeID const&)> proc)
 {
     for (auto const& n : qset.validators)
@@ -105,7 +105,7 @@ LocalNode::computeWeight(uint64 m, uint64 total, uint64 threshold)
 // if a validator is repeated multiple times its weight is only the
 // weight of the first occurrence
 uint64
-LocalNode::getNodeWeight(NodeID const& nodeID, SCPQuorumSet const& qset)
+LocalNode::getNodeWeight(NodeID const& nodeID, pogcvmQuorumSet const& qset)
 {
     uint64 n = qset.threshold;
     uint64 d = qset.innerSets.size() + qset.validators.size();
@@ -134,7 +134,7 @@ LocalNode::getNodeWeight(NodeID const& nodeID, SCPQuorumSet const& qset)
 }
 
 bool
-LocalNode::isQuorumSliceInternal(SCPQuorumSet const& qset,
+LocalNode::isQuorumSliceInternal(pogcvmQuorumSet const& qset,
                                  std::vector<NodeID> const& nodeSet)
 {
     uint32 thresholdLeft = qset.threshold;
@@ -166,7 +166,7 @@ LocalNode::isQuorumSliceInternal(SCPQuorumSet const& qset,
 }
 
 bool
-LocalNode::isQuorumSlice(SCPQuorumSet const& qSet,
+LocalNode::isQuorumSlice(pogcvmQuorumSet const& qSet,
                          std::vector<NodeID> const& nodeSet)
 {
     return isQuorumSliceInternal(qSet, nodeSet);
@@ -174,7 +174,7 @@ LocalNode::isQuorumSlice(SCPQuorumSet const& qSet,
 
 // called recursively
 bool
-LocalNode::isVBlockingInternal(SCPQuorumSet const& qset,
+LocalNode::isVBlockingInternal(pogcvmQuorumSet const& qset,
                                std::vector<NodeID> const& nodeSet)
 {
     // There is no v-blocking set for {\empty}
@@ -215,16 +215,16 @@ LocalNode::isVBlockingInternal(SCPQuorumSet const& qset,
 }
 
 bool
-LocalNode::isVBlocking(SCPQuorumSet const& qSet,
+LocalNode::isVBlocking(pogcvmQuorumSet const& qSet,
                        std::vector<NodeID> const& nodeSet)
 {
     return isVBlockingInternal(qSet, nodeSet);
 }
 
 bool
-LocalNode::isVBlocking(SCPQuorumSet const& qSet,
-                       std::map<NodeID, SCPEnvelopeWrapperPtr> const& map,
-                       std::function<bool(SCPStatement const&)> const& filter)
+LocalNode::isVBlocking(pogcvmQuorumSet const& qSet,
+                       std::map<NodeID, pogcvmEnvelopeWrapperPtr> const& map,
+                       std::function<bool(pogcvmStatement const&)> const& filter)
 {
     ZoneScoped;
     std::vector<NodeID> pNodes;
@@ -241,10 +241,10 @@ LocalNode::isVBlocking(SCPQuorumSet const& qSet,
 
 bool
 LocalNode::isQuorum(
-    SCPQuorumSet const& qSet,
-    std::map<NodeID, SCPEnvelopeWrapperPtr> const& map,
-    std::function<SCPQuorumSetPtr(SCPStatement const&)> const& qfun,
-    std::function<bool(SCPStatement const&)> const& filter)
+    pogcvmQuorumSet const& qSet,
+    std::map<NodeID, pogcvmEnvelopeWrapperPtr> const& map,
+    std::function<pogcvmQuorumSetPtr(pogcvmStatement const&)> const& qfun,
+    std::function<bool(pogcvmStatement const&)> const& filter)
 {
     ZoneScoped;
     std::vector<NodeID> pNodes;
@@ -283,9 +283,9 @@ LocalNode::isQuorum(
 
 std::vector<NodeID>
 LocalNode::findClosestVBlocking(
-    SCPQuorumSet const& qset,
-    std::map<NodeID, SCPEnvelopeWrapperPtr> const& map,
-    std::function<bool(SCPStatement const&)> const& filter,
+    pogcvmQuorumSet const& qset,
+    std::map<NodeID, pogcvmEnvelopeWrapperPtr> const& map,
+    std::function<bool(pogcvmStatement const&)> const& filter,
     NodeID const* excluded)
 {
     std::set<NodeID> s;
@@ -300,7 +300,7 @@ LocalNode::findClosestVBlocking(
 }
 
 std::vector<NodeID>
-LocalNode::findClosestVBlocking(SCPQuorumSet const& qset,
+LocalNode::findClosestVBlocking(pogcvmQuorumSet const& qset,
                                 std::set<NodeID> const& nodes,
                                 NodeID const* excluded)
 {
@@ -383,14 +383,14 @@ LocalNode::findClosestVBlocking(SCPQuorumSet const& qset,
 }
 
 Json::Value
-LocalNode::toJson(SCPQuorumSet const& qSet, bool fullKeys) const
+LocalNode::toJson(pogcvmQuorumSet const& qSet, bool fullKeys) const
 {
     return toJson(
         qSet, [&](NodeID const& k) { return mDriver.toStrKey(k, fullKeys); });
 }
 
 Json::Value
-LocalNode::toJson(SCPQuorumSet const& qSet,
+LocalNode::toJson(pogcvmQuorumSet const& qSet,
                   std::function<std::string(NodeID const&)> r)
 {
     Json::Value ret;
@@ -408,7 +408,7 @@ LocalNode::toJson(SCPQuorumSet const& qSet,
 }
 
 std::string
-LocalNode::to_string(SCPQuorumSet const& qSet) const
+LocalNode::to_string(pogcvmQuorumSet const& qSet) const
 {
     Json::FastWriter fw;
     return fw.write(toJson(qSet, false));

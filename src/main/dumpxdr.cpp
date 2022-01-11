@@ -63,7 +63,7 @@ dumpstream(XDRInputFileStream& in, bool compact)
 void
 dumpXdrStream(std::string const& filename, bool compact)
 {
-    std::regex rx(".*(ledger|bucket|transactions|results|meta|scp)-.+\\.xdr");
+    std::regex rx(".*(ledger|bucket|transactions|results|meta|pogcvm)-.+\\.xdr");
     std::smatch sm;
     if (std::regex_match(filename, sm, rx))
     {
@@ -92,8 +92,8 @@ dumpXdrStream(std::string const& filename, bool compact)
         }
         else
         {
-            releaseAssert(sm[1] == "scp");
-            dumpstream<SCPHistoryEntry>(in, compact);
+            releaseAssert(sm[1] == "pogcvm");
+            dumpstream<pogcvmHistoryEntry>(in, compact);
         }
     }
     else

@@ -35,7 +35,7 @@ TEST_CASE("Flooding", "[flood][overlay][acceptance]")
         Config cfg = getTestConfig(cfgNum);
         // do not close ledgers
         cfg.MANUAL_CLOSE = true;
-        cfg.FORCE_SCP = false;
+        cfg.FORCE_pogcvm = false;
         return cfg;
     };
 
@@ -207,9 +207,9 @@ TEST_CASE("Flooding", "[flood][overlay][acceptance]")
         }
     }
 
-    SECTION("scp messages flooding")
+    SECTION("pogcvm messages flooding")
     {
-        // SCP messages depend on
+        // pogcvm messages depend on
         // a quorum set
         // a valid transaction set
 
@@ -222,7 +222,7 @@ TEST_CASE("Flooding", "[flood][overlay][acceptance]")
             keysMap.insert(std::make_pair(k.getPublicKey(), k));
         }
 
-        auto injectSCP = [&](int i) {
+        auto injectpogcvm = [&](int i) {
             const int64 txAmount = 10000000;
 
             SecretKey dest = SecretKey::pseudoRandomForTesting();
@@ -244,24 +244,24 @@ TEST_CASE("Flooding", "[flood][overlay][acceptance]")
 
             // build the quorum set used by this message
             // use sources as validators
-            SCPQuorumSet qset;
+            pogcvmQuorumSet qset;
             qset.threshold = 1;
             qset.validators.emplace_back(sources[i]);
 
             Hash qSetHash = sha256(xdr::xdr_to_opaque(qset));
 
-            // build an SCP message for the next ledger
+            // build an pogcvm message for the next ledger
             auto ct = std::max<uint64>(
-                lcl.header.scpValue.closeTime + 1,
+                lcl.header.pogcvmValue.closeTime + 1,
                 VirtualClock::to_time_t(inApp->getClock().system_now()));
             POGchainValue sv = herder.makePOGchainValue(
                 txSet.getContentsHash(), ct, emptyUpgradeSteps, keys[0]);
 
-            SCPEnvelope envelope;
+            pogcvmEnvelope envelope;
 
             auto& st = envelope.statement;
             st.slotIndex = lcl.header.ledgerSeq + 1;
-            st.pledges.type(SCP_ST_PREPARE);
+            st.pledges.type(pogcvm_ST_PREPARE);
             auto& prep = st.pledges.prepare();
             prep.ballot.value = xdr::xdr_to_opaque(sv);
             prep.ballot.counter = 1;
@@ -269,23 +269,23 @@ TEST_CASE("Flooding", "[flood][overlay][acceptance]")
 
             st.nodeID = keys[i].getPublicKey();
             envelope.signature = keys[i].sign(xdr::xdr_to_opaque(
-                inApp->getNetworkID(), ENVELOPE_TYPE_SCP, st));
+                inApp->getNetworkID(), ENVELOPE_TYPE_pogcvm, st));
 
             // inject the message
-            REQUIRE(herder.recvSCPEnvelope(envelope, qset, txSet) ==
+            REQUIRE(herder.recvpogcvmEnvelope(envelope, qset, txSet) ==
                     Herder::ENVELOPE_STATUS_READY);
         };
 
-        auto ackedSCP = [&](std::shared_ptr<Application> app) {
-            // checks if an app received and processed all SCP messages
+        auto ackedpogcvm = [&](std::shared_ptr<Application> app) {
+            // checks if an app received and processed all pogcvm messages
             size_t okCount = 0;
             auto const& lcl =
                 app->getLedgerManager().getLastClosedLedgerHeader();
 
             HerderImpl& herder = *static_cast<HerderImpl*>(&app->getHerder());
-            herder.getSCP().processCurrentState(
+            herder.getpogcvm().processCurrentState(
                 lcl.header.ledgerSeq + 1,
-                [&](SCPEnvelope const& e) {
+                [&](pogcvmEnvelope const& e) {
                     if (keysMap.find(e.statement.nodeID) != keysMap.end())
                     {
                         okCount++;
@@ -301,9 +301,9 @@ TEST_CASE("Flooding", "[flood][overlay][acceptance]")
             return res;
         };
 
-        auto quorumAdjuster = [&](SCPQuorumSet const& qSet) {
+        auto quorumAdjuster = [&](pogcvmQuorumSet const& qSet) {
             auto resQSet = qSet;
-            SCPQuorumSet sub;
+            pogcvmQuorumSet sub;
             for (auto const& k : keys)
             {
                 sub.validators.emplace_back(k.getPublicKey());
@@ -323,14 +323,14 @@ TEST_CASE("Flooding", "[flood][overlay][acceptance]")
                 simulation =
                     Topologies::(4, 1.0f, Simulation::OVER_LOOPBACK,
                                      networkID, cfgGen, quorumAdjuster);
-                test(injectSCP, ackedSCP);
+                test(injectpogcvm, ackedpogcvm);
             }
             SECTION("tcp")
             {
                 simulation =
                     Topologies::(4, 1.0f, Simulation::OVER_TCP, networkID,
                                      cfgGen, quorumAdjuster);
-                test(injectSCP, ackedSCP);
+                test(injectpogcvm, ackedpogcvm);
             }
         }
 
@@ -341,14 +341,14 @@ TEST_CASE("Flooding", "[flood][overlay][acceptance]")
                 simulation = Topologies::hierarchicalQuorumSimplified(
                     5, 10, Simulation::OVER_LOOPBACK, networkID, cfgGen, 1,
                     quorumAdjuster);
-                test(injectSCP, ackedSCP);
+                test(injectpogcvm, ackedpogcvm);
             }
             SECTION("tcp")
             {
                 simulation = Topologies::hierarchicalQuorumSimplified(
                     5, 10, Simulation::OVER_TCP, networkID, cfgGen, 1,
                     quorumAdjuster);
-                test(injectSCP, ackedSCP);
+                test(injectpogcvm, ackedpogcvm);
             }
         }
     }

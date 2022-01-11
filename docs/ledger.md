@@ -52,6 +52,6 @@ performance needs.
     content, to persistent long-term storage. This record can be used to audit
     the full ledger chain's history, and is used to catch-up new nodes and nodes
     that have fallen far behind the rest of the network without imposing an
-    undue burden on the nodes participating in the consensus protocol (See
+    undue burden on the nodes participating in the validation protocol (See
     [`src/history/readme.md`](/src/history/readme.md)).
 

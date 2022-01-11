@@ -2,7 +2,7 @@
 // under the Apache License, Version 2.0. See the COPYING file at the root
 // of this distribution or at http://www.apache.org/licenses/LICENSE-2.0
 
-%#include "xdr/POGchain-SCP.h"
+%#include "xdr/POGchain-pogcvm.h"
 %#include "xdr/POGchain-transaction.h"
 
 namespace POGchain
@@ -22,7 +22,7 @@ struct LedgerCloseValueSignature
     Signature signature; // nodeID's signature
 };
 
-/* POGchainValue is the value used by SCP to reach consensus on a given ledger
+/* POGchainValue is the value used by pogcvm to reach validation on a given ledger
  */
 struct POGchainValue
 {
@@ -31,7 +31,7 @@ struct POGchainValue
 
     // upgrades to apply to the previous ledger (usually empty)
     // this is a vector of encoded 'LedgerUpgrade' so that nodes can drop
-    // unknown steps during consensus if needed.
+    // unknown steps during validation if needed.
     // see notes below on 'LedgerUpgrade' for more detail
     // max size is dictated by number of upgrade types (+ room for future)
     UpgradeType upgrades<6>;
@@ -75,7 +75,7 @@ struct LedgerHeader
 {
     uint32 ledgerVersion;    // the protocol version of the ledger
     Hash previousLedgerHash; // hash of the previous ledger header
-    POGchainValue scpValue;   // what consensus agreed to
+    POGchainValue pogcvmValue;   // what validation agreed to
     Hash txSetResultHash;    // the TransactionResultSet that led to this ledger
     Hash bucketListHash;     // hash of the ledger state
 
@@ -176,7 +176,7 @@ case METAENTRY:
     BucketMetadata metaEntry;
 };
 
-// Transaction sets are the unit used by SCP to decide on transitions
+// Transaction sets are the unit used by pogcvm to decide on transitions
 // between ledgers
 struct TransactionSet
 {
@@ -240,27 +240,27 @@ struct LedgerHeaderHistoryEntry
     ext;
 };
 
-// historical SCP messages
+// historical pogcvm messages
 
-struct LedgerSCPMessages
+struct LedgerpogcvmMessages
 {
     uint32 ledgerSeq;
-    SCPEnvelope messages<>;
+    pogcvmEnvelope messages<>;
 };
 
 // note: ledgerMessages may refer to any quorumSets encountered
 // in the file so far, not just the one from this entry
-struct SCPHistoryEntryV0
+struct pogcvmHistoryEntryV0
 {
-    SCPQuorumSet quorumSets<>; // additional quorum sets used by ledgerMessages
-    LedgerSCPMessages ledgerMessages;
+    pogcvmQuorumSet quorumSets<>; // additional quorum sets used by ledgerMessages
+    LedgerpogcvmMessages ledgerMessages;
 };
 
-// SCP history file is an array of these
-union SCPHistoryEntry switch (int v)
+// pogcvm history file is an array of these
+union pogcvmHistoryEntry switch (int v)
 {
 case 0:
-    SCPHistoryEntryV0 v0;
+    pogcvmHistoryEntryV0 v0;
 };
 
 // represents the meta in the transaction table history
@@ -355,7 +355,7 @@ struct LedgerCloseMetaV0
     UpgradeEntryMeta upgradesProcessing<>;
 
     // other misc information attached to the ledger close
-    SCPHistoryEntry scpInfo<>;
+    pogcvmHistoryEntry pogcvmInfo<>;
 };
 
 union LedgerCloseMeta switch (int v)

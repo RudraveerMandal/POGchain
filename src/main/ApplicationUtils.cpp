@@ -411,13 +411,13 @@ mergeBucketList(Config cfg, std::string const& outputDir)
 }
 
 void
-setForceSCPFlag()
+setForcepogcvmFlag()
 {
     LOG_WARNING(DEFAULT_LOG, "* ");
     LOG_WARNING(DEFAULT_LOG,
-                "* Nothing to do: `force scp` command has been deprecated");
+                "* Nothing to do: `force pogcvm` command has been deprecated");
     LOG_WARNING(DEFAULT_LOG,
-                "* Refer to `--wait-for-consensus` run option instead");
+                "* Refer to `--wait-for-validation` run option instead");
     LOG_WARNING(DEFAULT_LOG, "* ");
 }
 

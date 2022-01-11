@@ -6,7 +6,7 @@
 #include "herder/LedgerCloseData.h"
 #include "main/Application.h"
 #include "main/Config.h"
-#include "scp/SCP.h"
+#include "pogcvm/pogcvm.h"
 #include "simulation/Simulation.h"
 #include "simulation/Topologies.h"
 #include "test/TestAccount.h"
@@ -1062,7 +1062,7 @@ TEST_CASE("surge pricing", "[herder][txset]")
 }
 
 static void
-testSCPDriver(uint32 protocolVersion, uint32_t maxTxSize, size_t expectedOps)
+testpogcvmDriver(uint32 protocolVersion, uint32_t maxTxSize, size_t expectedOps)
 {
     using SVUpgrades = decltype(POGchainValue::upgrades);
 
@@ -1101,17 +1101,17 @@ testSCPDriver(uint32 protocolVersion, uint32_t maxTxSize, size_t expectedOps)
                              uint64_t slotIndex, bool nomination) {
         // herder must want the TxSet before receiving it, so we are sending it
         // fake envelope
-        auto envelope = SCPEnvelope{};
+        auto envelope = pogcvmEnvelope{};
         envelope.statement.slotIndex = slotIndex;
         if (nomination)
         {
-            envelope.statement.pledges.type(SCP_ST_NOMINATE);
+            envelope.statement.pledges.type(pogcvm_ST_NOMINATE);
             envelope.statement.pledges.nominate().votes.push_back(p.first);
             envelope.statement.pledges.nominate().quorumSetHash = qSetHash;
         }
         else
         {
-            envelope.statement.pledges.type(SCP_ST_PREPARE);
+            envelope.statement.pledges.type(pogcvm_ST_PREPARE);
             envelope.statement.pledges.prepare().ballot.value = p.first;
             envelope.statement.pledges.prepare().quorumSetHash = qSetHash;
         }
@@ -1145,11 +1145,11 @@ testSCPDriver(uint32 protocolVersion, uint32_t maxTxSize, size_t expectedOps)
 
         auto addToCandidates = [&](TxPair const& p) {
             auto envelope = makeEnvelope(
-                herder, p, {}, herder.trackingConsensusLedgerIndex() + 1, true);
-            REQUIRE(herder.recvSCPEnvelope(envelope) ==
+                herder, p, {}, herder.trackingvalidationLedgerIndex() + 1, true);
+            REQUIRE(herder.recvpogcvmEnvelope(envelope) ==
                     Herder::ENVELOPE_STATUS_FETCHING);
             REQUIRE(herder.recvTxSet(p.second->getContentsHash(), *p.second));
-            auto v = herder.getHerderSCPDriver().wrapValue(p.first);
+            auto v = herder.getHerderpogcvmDriver().wrapValue(p.first);
             candidates.emplace(v);
         };
 
@@ -1228,7 +1228,7 @@ testSCPDriver(uint32 protocolVersion, uint32_t maxTxSize, size_t expectedOps)
             // Combine all the candidates seen so far, and extract the
             // returned POGchainValue.
             ValueWrapperPtr v =
-                herder.getHerderSCPDriver().combineCandidates(1, candidates);
+                herder.getHerderpogcvmDriver().combineCandidates(1, candidates);
             POGchainValue sv;
             xdr::xdr_from_opaque(v->getValue(), sv);
 
@@ -1260,7 +1260,7 @@ testSCPDriver(uint32 protocolVersion, uint32_t maxTxSize, size_t expectedOps)
         addToCandidates(makeTxPair(herder, txSetL, 20));
         TxSetFramePtr txSetL2 = makeTransactions(lcl.hash, maxTxSize, 1, 1000);
         addToCandidates(makeTxPair(herder, txSetL2, 20));
-        auto v = herder.getHerderSCPDriver().combineCandidates(1, candidates);
+        auto v = herder.getHerderpogcvmDriver().combineCandidates(1, candidates);
         POGchainValue sv;
         xdr::xdr_from_opaque(v->getValue(), sv);
         REQUIRE(sv.ext.v() == POGchain_VALUE_SIGNED);
@@ -1270,8 +1270,8 @@ testSCPDriver(uint32 protocolVersion, uint32_t maxTxSize, size_t expectedOps)
     SECTION("validateValue signatures")
     {
         auto& herder = static_cast<HerderImpl&>(app->getHerder());
-        auto& scp = herder.getHerderSCPDriver();
-        auto seq = herder.trackingConsensusLedgerIndex() + 1;
+        auto& pogcvm = herder.getHerderpogcvmDriver();
+        auto seq = herder.trackingvalidationLedgerIndex() + 1;
         auto ct = app->timeNow() + 1;
 
         TxSetFramePtr txSet0 = makeTransactions(lcl.hash, 0, 1, 100);
@@ -1279,7 +1279,7 @@ testSCPDriver(uint32 protocolVersion, uint32_t maxTxSize, size_t expectedOps)
             // make sure that txSet0 is loaded
             auto p = makeTxPair(herder, txSet0, ct);
             auto envelope = makeEnvelope(herder, p, {}, seq, true);
-            REQUIRE(herder.recvSCPEnvelope(envelope) ==
+            REQUIRE(herder.recvpogcvmEnvelope(envelope) ==
                     Herder::ENVELOPE_STATUS_FETCHING);
             REQUIRE(herder.recvTxSet(txSet0->getContentsHash(), *txSet0));
         }
@@ -1287,19 +1287,19 @@ testSCPDriver(uint32 protocolVersion, uint32_t maxTxSize, size_t expectedOps)
         SECTION("valid")
         {
             auto nomV = makeTxPair(herder, txSet0, ct);
-            REQUIRE(scp.validateValue(seq, nomV.first, true) ==
-                    SCPDriver::kFullyValidatedValue);
+            REQUIRE(pogcvm.validateValue(seq, nomV.first, true) ==
+                    pogcvmDriver::kFullyValidatedValue);
 
             auto balV = makeTxPair(herder, txSet0, ct);
-            REQUIRE(scp.validateValue(seq, balV.first, false) ==
-                    SCPDriver::kFullyValidatedValue);
+            REQUIRE(pogcvm.validateValue(seq, balV.first, false) ==
+                    pogcvmDriver::kFullyValidatedValue);
         }
         SECTION("invalid")
         {
             auto checkInvalid = [&](POGchainValue const& sv, bool nomination) {
                 auto v = xdr::xdr_to_opaque(sv);
-                REQUIRE(scp.validateValue(seq, v, nomination) ==
-                        SCPDriver::kInvalidValue);
+                REQUIRE(pogcvm.validateValue(seq, v, nomination) ==
+                        pogcvmDriver::kInvalidValue);
             };
 
             auto testInvalidValue = [&](bool isNomination) {
@@ -1349,14 +1349,14 @@ testSCPDriver(uint32 protocolVersion, uint32_t maxTxSize, size_t expectedOps)
     SECTION("validateValue closeTimes")
     {
         auto& herder = static_cast<HerderImpl&>(app->getHerder());
-        auto& scp = herder.getHerderSCPDriver();
+        auto& pogcvm = herder.getHerderpogcvmDriver();
 
-        auto const lclCloseTime = lcl.header.scpValue.closeTime;
+        auto const lclCloseTime = lcl.header.pogcvmValue.closeTime;
 
         auto testTxBounds =
             [&](TimePoint const minTime, TimePoint const maxTime,
                 TimePoint const nextCloseTime, bool const expectValid) {
-                REQUIRE(nextCloseTime > lcl.header.scpValue.closeTime);
+                REQUIRE(nextCloseTime > lcl.header.pogcvmValue.closeTime);
                 // Build a transaction set containing one transaction (which
                 // could be any transaction that is valid in all ways aside from
                 // its time bounds) with the given minTime and maxTime.
@@ -1375,16 +1375,16 @@ testSCPDriver(uint32 protocolVersion, uint32_t maxTxSize, size_t expectedOps)
                 // Build a POGchainValue containing the transaction set we just
                 // built and the given next closeTime.
                 auto val = makeTxPair(herder, txSet, nextCloseTime);
-                auto const seq = herder.trackingConsensusLedgerIndex() + 1;
+                auto const seq = herder.trackingvalidationLedgerIndex() + 1;
                 auto envelope = makeEnvelope(herder, val, {}, seq, true);
-                REQUIRE(herder.recvSCPEnvelope(envelope) ==
+                REQUIRE(herder.recvpogcvmEnvelope(envelope) ==
                         Herder::ENVELOPE_STATUS_FETCHING);
                 REQUIRE(herder.recvTxSet(txSet->getContentsHash(), *txSet));
 
                 // Validate the POGchainValue.
-                REQUIRE(scp.validateValue(seq, val.first, true) ==
-                        (expectValid ? SCPDriver::kFullyValidatedValue
-                                     : SCPDriver::kInvalidValue));
+                REQUIRE(pogcvm.validateValue(seq, val.first, true) ==
+                        (expectValid ? pogcvmDriver::kFullyValidatedValue
+                                     : pogcvmDriver::kInvalidValue));
 
                 // Confirm that trimInvalid() as used by
                 // HerderImpl::triggerNextLedger() trims the transaction if and
@@ -1422,7 +1422,7 @@ testSCPDriver(uint32 protocolVersion, uint32_t maxTxSize, size_t expectedOps)
         };
 
         auto makeSingleton = [](const PublicKey& key) {
-            auto result = SCPQuorumSet{};
+            auto result = pogcvmQuorumSet{};
             result.threshold = 1;
             result.validators.push_back(key);
             return result;
@@ -1439,7 +1439,7 @@ testSCPDriver(uint32 protocolVersion, uint32_t maxTxSize, size_t expectedOps)
         auto saneQSet2 = makeSingleton(keys[1]);
         auto saneQSet2Hash = sha256(xdr::xdr_to_opaque(saneQSet2));
 
-        auto bigQSet = SCPQuorumSet{};
+        auto bigQSet = pogcvmQuorumSet{};
         bigQSet.threshold = 1;
         bigQSet.validators.push_back(keys[0]);
         for (auto i = 0; i < 10; i++)
@@ -1457,7 +1457,7 @@ testSCPDriver(uint32 protocolVersion, uint32_t maxTxSize, size_t expectedOps)
         auto p1 = makeTxPair(herder, transactions1, 10);
         auto p2 = makeTxPair(herder, transactions1, 10);
         // use current + 1 to allow for any value (old values get filtered more)
-        auto lseq = herder.trackingConsensusLedgerIndex() + 1;
+        auto lseq = herder.trackingvalidationLedgerIndex() + 1;
         auto saneEnvelopeQ1T1 =
             makeEnvelope(herder, p1, saneQSet1Hash, lseq, true);
         auto saneEnvelopeQ1T2 =
@@ -1468,50 +1468,50 @@ testSCPDriver(uint32 protocolVersion, uint32_t maxTxSize, size_t expectedOps)
 
         SECTION("return FETCHING until fetched")
         {
-            REQUIRE(herder.recvSCPEnvelope(saneEnvelopeQ1T1) ==
+            REQUIRE(herder.recvpogcvmEnvelope(saneEnvelopeQ1T1) ==
                     Herder::ENVELOPE_STATUS_FETCHING);
-            REQUIRE(herder.recvSCPEnvelope(saneEnvelopeQ1T1) ==
+            REQUIRE(herder.recvpogcvmEnvelope(saneEnvelopeQ1T1) ==
                     Herder::ENVELOPE_STATUS_FETCHING);
-            REQUIRE(herder.recvSCPQuorumSet(saneQSet1Hash, saneQSet1));
+            REQUIRE(herder.recvpogcvmQuorumSet(saneQSet1Hash, saneQSet1));
             REQUIRE(herder.recvTxSet(p1.second->getContentsHash(), *p1.second));
-            // will not return ENVELOPE_STATUS_READY as the recvSCPEnvelope() is
+            // will not return ENVELOPE_STATUS_READY as the recvpogcvmEnvelope() is
             // called internally
             // when QSet and TxSet are both received
-            REQUIRE(herder.recvSCPEnvelope(saneEnvelopeQ1T1) ==
+            REQUIRE(herder.recvpogcvmEnvelope(saneEnvelopeQ1T1) ==
                     Herder::ENVELOPE_STATUS_PROCESSED);
         }
 
         SECTION("only accepts qset once")
         {
-            REQUIRE(herder.recvSCPEnvelope(saneEnvelopeQ1T1) ==
+            REQUIRE(herder.recvpogcvmEnvelope(saneEnvelopeQ1T1) ==
                     Herder::ENVELOPE_STATUS_FETCHING);
-            REQUIRE(herder.recvSCPQuorumSet(saneQSet1Hash, saneQSet1));
-            REQUIRE(!herder.recvSCPQuorumSet(saneQSet1Hash, saneQSet1));
+            REQUIRE(herder.recvpogcvmQuorumSet(saneQSet1Hash, saneQSet1));
+            REQUIRE(!herder.recvpogcvmQuorumSet(saneQSet1Hash, saneQSet1));
 
             SECTION("when re-receiving the same envelope")
             {
-                REQUIRE(herder.recvSCPEnvelope(saneEnvelopeQ1T1) ==
+                REQUIRE(herder.recvpogcvmEnvelope(saneEnvelopeQ1T1) ==
                         Herder::ENVELOPE_STATUS_FETCHING);
-                REQUIRE(!herder.recvSCPQuorumSet(saneQSet1Hash, saneQSet1));
+                REQUIRE(!herder.recvpogcvmQuorumSet(saneQSet1Hash, saneQSet1));
             }
 
             SECTION("when receiving different envelope with the same qset")
             {
-                REQUIRE(herder.recvSCPEnvelope(saneEnvelopeQ1T2) ==
+                REQUIRE(herder.recvpogcvmEnvelope(saneEnvelopeQ1T2) ==
                         Herder::ENVELOPE_STATUS_FETCHING);
-                REQUIRE(!herder.recvSCPQuorumSet(saneQSet1Hash, saneQSet1));
+                REQUIRE(!herder.recvpogcvmQuorumSet(saneQSet1Hash, saneQSet1));
             }
         }
 
         SECTION("only accepts txset once")
         {
-            REQUIRE(herder.recvSCPEnvelope(saneEnvelopeQ1T1) ==
+            REQUIRE(herder.recvpogcvmEnvelope(saneEnvelopeQ1T1) ==
                     Herder::ENVELOPE_STATUS_FETCHING);
             REQUIRE(herder.recvTxSet(p1.second->getContentsHash(), *p1.second));
 
             SECTION("when re-receiving the same envelope")
             {
-                REQUIRE(herder.recvSCPEnvelope(saneEnvelopeQ1T1) ==
+                REQUIRE(herder.recvpogcvmEnvelope(saneEnvelopeQ1T1) ==
                         Herder::ENVELOPE_STATUS_FETCHING);
                 REQUIRE(!herder.recvTxSet(p1.second->getContentsHash(),
                                           *p1.second));
@@ -1519,7 +1519,7 @@ testSCPDriver(uint32 protocolVersion, uint32_t maxTxSize, size_t expectedOps)
 
             SECTION("when receiving different envelope with the same txset")
             {
-                REQUIRE(herder.recvSCPEnvelope(saneEnvelopeQ2T1) ==
+                REQUIRE(herder.recvpogcvmEnvelope(saneEnvelopeQ2T1) ==
                         Herder::ENVELOPE_STATUS_FETCHING);
                 REQUIRE(!herder.recvTxSet(p1.second->getContentsHash(),
                                           *p1.second));
@@ -1528,9 +1528,9 @@ testSCPDriver(uint32 protocolVersion, uint32_t maxTxSize, size_t expectedOps)
 
         SECTION("do not accept unasked qset")
         {
-            REQUIRE(!herder.recvSCPQuorumSet(saneQSet1Hash, saneQSet1));
-            REQUIRE(!herder.recvSCPQuorumSet(saneQSet2Hash, saneQSet2));
-            REQUIRE(!herder.recvSCPQuorumSet(bigQSetHash, bigQSet));
+            REQUIRE(!herder.recvpogcvmQuorumSet(saneQSet1Hash, saneQSet1));
+            REQUIRE(!herder.recvpogcvmQuorumSet(saneQSet2Hash, saneQSet2));
+            REQUIRE(!herder.recvpogcvmQuorumSet(bigQSetHash, bigQSet));
         }
 
         SECTION("do not accept unasked txset")
@@ -1543,17 +1543,17 @@ testSCPDriver(uint32 protocolVersion, uint32_t maxTxSize, size_t expectedOps)
 
         SECTION("do not accept not sane qset")
         {
-            REQUIRE(herder.recvSCPEnvelope(bigEnvelope) ==
+            REQUIRE(herder.recvpogcvmEnvelope(bigEnvelope) ==
                     Herder::ENVELOPE_STATUS_FETCHING);
-            REQUIRE(!herder.recvSCPQuorumSet(bigQSetHash, bigQSet));
+            REQUIRE(!herder.recvpogcvmQuorumSet(bigQSetHash, bigQSet));
         }
 
         SECTION("do not accept txset from envelope discarded because of unsane "
                 "qset")
         {
-            REQUIRE(herder.recvSCPEnvelope(bigEnvelope) ==
+            REQUIRE(herder.recvpogcvmEnvelope(bigEnvelope) ==
                     Herder::ENVELOPE_STATUS_FETCHING);
-            REQUIRE(!herder.recvSCPQuorumSet(bigQSetHash, bigQSet));
+            REQUIRE(!herder.recvpogcvmQuorumSet(bigQSetHash, bigQSet));
             REQUIRE(
                 !herder.recvTxSet(p1.second->getContentsHash(), *p1.second));
         }
@@ -1561,34 +1561,34 @@ testSCPDriver(uint32 protocolVersion, uint32_t maxTxSize, size_t expectedOps)
         SECTION(
             "accept txset from envelope with unsane qset before receiving qset")
         {
-            REQUIRE(herder.recvSCPEnvelope(bigEnvelope) ==
+            REQUIRE(herder.recvpogcvmEnvelope(bigEnvelope) ==
                     Herder::ENVELOPE_STATUS_FETCHING);
             REQUIRE(herder.recvTxSet(p1.second->getContentsHash(), *p1.second));
-            REQUIRE(!herder.recvSCPQuorumSet(bigQSetHash, bigQSet));
+            REQUIRE(!herder.recvpogcvmQuorumSet(bigQSetHash, bigQSet));
         }
 
         SECTION("accept txset from envelopes with both valid and unsane qset")
         {
-            REQUIRE(herder.recvSCPEnvelope(saneEnvelopeQ1T1) ==
+            REQUIRE(herder.recvpogcvmEnvelope(saneEnvelopeQ1T1) ==
                     Herder::ENVELOPE_STATUS_FETCHING);
-            REQUIRE(herder.recvSCPEnvelope(bigEnvelope) ==
+            REQUIRE(herder.recvpogcvmEnvelope(bigEnvelope) ==
                     Herder::ENVELOPE_STATUS_FETCHING);
-            REQUIRE(herder.recvSCPQuorumSet(saneQSet1Hash, saneQSet1));
-            REQUIRE(!herder.recvSCPQuorumSet(bigQSetHash, bigQSet));
+            REQUIRE(herder.recvpogcvmQuorumSet(saneQSet1Hash, saneQSet1));
+            REQUIRE(!herder.recvpogcvmQuorumSet(bigQSetHash, bigQSet));
             REQUIRE(herder.recvTxSet(p1.second->getContentsHash(), *p1.second));
         }
     }
 }
 
-TEST_CASE("SCP Driver", "[herder][acceptance]")
+TEST_CASE("pogcvm Driver", "[herder][acceptance]")
 {
     SECTION("protocol current")
     {
-        testSCPDriver(Config::CURRENT_LEDGER_PROTOCOL_VERSION, 1000, 15);
+        testpogcvmDriver(Config::CURRENT_LEDGER_PROTOCOL_VERSION, 1000, 15);
     }
 }
 
-TEST_CASE("SCP State", "[herder][acceptance]")
+TEST_CASE("pogcvm State", "[herder][acceptance]")
 {
     SecretKey nodeKeys[3];
     PublicKey nodeIDs[3];
@@ -1600,7 +1600,7 @@ TEST_CASE("SCP State", "[herder][acceptance]")
     Config nodeCfgs[3];
 
     // Normally ledger should externalize in EXP_LEDGER_TIMESPAN_SECONDS
-    // but for "Force SCP" test there are 3 nodes and only 2 have previous
+    // but for "Force pogcvm" test there are 3 nodes and only 2 have previous
     // ledger state. However it is possible that nomination protocol will
     // choose last node as leader for first few rounds. New ledger will only
     // be externalized when first or second node are chosen as round leaders.
@@ -1623,10 +1623,10 @@ TEST_CASE("SCP State", "[herder][acceptance]")
     uint32_t numLedgers = 5;
     uint32_t expectedLedger = LedgerManager::GENESIS_LEDGER_SEQ + numLedgers;
 
-    auto doTest = [&](bool forceSCP) {
+    auto doTest = [&](bool forcepogcvm) {
         // add node0 and node1, in lockstep
         {
-            SCPQuorumSet qSet;
+            pogcvmQuorumSet qSet;
             qSet.threshold = 2;
             qSet.validators.push_back(nodeIDs[0]);
             qSet.validators.push_back(nodeIDs[1]);
@@ -1658,7 +1658,7 @@ TEST_CASE("SCP State", "[herder][acceptance]")
         for (int i = 0; i < 2; i++)
         {
             nodeCfgs[i] = sim->getNode(nodeIDs[i])->getConfig();
-            nodeCfgs[i].FORCE_SCP = forceSCP;
+            nodeCfgs[i].FORCE_pogcvm = forcepogcvm;
         }
 
         // restart simulation
@@ -1668,7 +1668,7 @@ TEST_CASE("SCP State", "[herder][acceptance]")
             std::make_shared<Simulation>(Simulation::OVER_LOOPBACK, networkID);
 
         // start a new node that will switch to whatever node0 & node1 says
-        SCPQuorumSet qSetAll;
+        pogcvmQuorumSet qSetAll;
         qSetAll.threshold = 2;
         for (int i = 0; i < 3; i++)
         {
@@ -1676,11 +1676,11 @@ TEST_CASE("SCP State", "[herder][acceptance]")
         }
         sim->addNode(nodeKeys[2], qSetAll, &nodeCfgs[2]);
         sim->getNode(nodeIDs[2])->start();
-        // 2 always has FORCE_SCP=true, so it starts in sync
+        // 2 always has FORCE_pogcvm=true, so it starts in sync
         REQUIRE(sim->getNode(nodeIDs[2])->getState() ==
                 Application::State::APP_SYNCED_STATE);
 
-        // crank a bit (nothing should happen, node 2 is waiting for SCP
+        // crank a bit (nothing should happen, node 2 is waiting for pogcvm
         // messages)
         sim->crankForAtLeast(std::chrono::seconds(1), false);
 
@@ -1689,7 +1689,7 @@ TEST_CASE("SCP State", "[herder][acceptance]")
                     .getLastClosedLedgerNum() == 1);
 
         // start up node 0 and 1 again
-        // nodes 0 and 1 have lost their SCP state as they got restarted
+        // nodes 0 and 1 have lost their pogcvm state as they got restarted
         // yet they should have their own last statements that should be
         // forwarded to node 2 when they connect to it
         // causing node 2 to externalize ledger #6
@@ -1698,7 +1698,7 @@ TEST_CASE("SCP State", "[herder][acceptance]")
         sim->addNode(nodeKeys[1], qSetAll, &nodeCfgs[1], false);
         sim->getNode(nodeIDs[0])->start();
         sim->getNode(nodeIDs[1])->start();
-        if (forceSCP)
+        if (forcepogcvm)
         {
             REQUIRE(sim->getNode(nodeIDs[0])->getState() ==
                     Application::State::APP_SYNCED_STATE);
@@ -1717,7 +1717,7 @@ TEST_CASE("SCP State", "[herder][acceptance]")
         sim->addConnection(nodeIDs[1], nodeIDs[2]);
     };
 
-    SECTION("Force SCP")
+    SECTION("Force pogcvm")
     {
         doTest(true);
 
@@ -1744,7 +1744,7 @@ TEST_CASE("SCP State", "[herder][acceptance]")
         }
     }
 
-    SECTION("No Force SCP")
+    SECTION("No Force pogcvm")
     {
         // node 0 and 1 don't try to close, causing all nodes
         // to get stuck at ledger #6
@@ -1783,7 +1783,7 @@ TEST_CASE("SCP State", "[herder][acceptance]")
             10 * Herder::EXP_LEDGER_TIMESPAN_SECONDS, false);
         // Verify that the app is not synced anymore
         REQUIRE(sim->getNode(nodeIDs[2])->getState() ==
-                Application::State::APP_ACQUIRING_CONSENSUS_STATE);
+                Application::State::APP_ACQUIRING_validation_STATE);
     }
 }
 
@@ -1800,7 +1800,7 @@ checkInvariants(Application& app, HerderImpl& herder)
     auto lcl = app.getLedgerManager().getLastClosedLedgerNum();
     // Either tracking or last tracking must be set
     // Tracking is ahead of or equal to LCL
-    REQUIRE(herder.trackingConsensusLedgerIndex() >= lcl);
+    REQUIRE(herder.trackingvalidationLedgerIndex() >= lcl);
 }
 
 static void
@@ -1809,7 +1809,7 @@ checkHerder(Application& app, HerderImpl& herder, Herder::State expectedState,
 {
     checkInvariants(app, herder);
     REQUIRE(herder.getState() == expectedState);
-    REQUIRE(herder.trackingConsensusLedgerIndex() == ledger);
+    REQUIRE(herder.trackingvalidationLedgerIndex() == ledger);
 }
 
 // The main purpose of this test is to ensure the externalize path works
@@ -1831,7 +1831,7 @@ TEST_CASE("herder externalizes values", "[herder]")
     auto validatorBKey = SecretKey::fromSeed(sha256("validator-B"));
     auto validatorCKey = SecretKey::fromSeed(sha256("validator-C"));
 
-    SCPQuorumSet qset;
+    pogcvmQuorumSet qset;
     qset.threshold = 2;
     qset.validators.push_back(validatorAKey.getPublicKey());
     qset.validators.push_back(validatorBKey.getPublicKey());
@@ -1856,7 +1856,7 @@ TEST_CASE("herder externalizes values", "[herder]")
 
     simulation->startAllNodes();
 
-    // After SCP is restored, Herder is tracking
+    // After pogcvm is restored, Herder is tracking
     REQUIRE(getC()->getHerder().getState() ==
             Herder::State::HERDER_TRACKING_NETWORK_STATE);
 
@@ -1916,57 +1916,57 @@ TEST_CASE("herder externalizes values", "[herder]")
     auto const& lmC = getC()->getLedgerManager();
 
     // Advance A and B a bit further, and collect externalize messages
-    std::map<uint32_t, std::pair<SCPEnvelope, TxSetFramePtr>>
-        validatorSCPMessagesA;
-    std::map<uint32_t, std::pair<SCPEnvelope, TxSetFramePtr>>
-        validatorSCPMessagesB;
+    std::map<uint32_t, std::pair<pogcvmEnvelope, TxSetFramePtr>>
+        validatorpogcvmMessagesA;
+    std::map<uint32_t, std::pair<pogcvmEnvelope, TxSetFramePtr>>
+        validatorpogcvmMessagesB;
 
     auto destinationLedger = waitForAB(4, true);
     for (auto start = currentLedger + 1; start <= destinationLedger; start++)
     {
-        for (auto const& env : herderA.getSCP().getLatestMessagesSend(start))
+        for (auto const& env : herderA.getpogcvm().getLatestMessagesSend(start))
         {
-            if (env.statement.pledges.type() == SCP_ST_EXTERNALIZE)
+            if (env.statement.pledges.type() == pogcvm_ST_EXTERNALIZE)
             {
                 POGchainValue sv;
                 auto& pe = herderA.getPendingEnvelopes();
-                herderA.getHerderSCPDriver().toPOGchainValue(
+                herderA.getHerderpogcvmDriver().toPOGchainValue(
                     env.statement.pledges.externalize().commit.value, sv);
                 auto txset = pe.getTxSet(sv.txSetHash);
                 REQUIRE(txset);
-                validatorSCPMessagesA[start] = std::make_pair(env, txset);
+                validatorpogcvmMessagesA[start] = std::make_pair(env, txset);
             }
         }
 
-        for (auto const& env : herderB.getSCP().getLatestMessagesSend(start))
+        for (auto const& env : herderB.getpogcvm().getLatestMessagesSend(start))
         {
-            if (env.statement.pledges.type() == SCP_ST_EXTERNALIZE)
+            if (env.statement.pledges.type() == pogcvm_ST_EXTERNALIZE)
             {
                 POGchainValue sv;
                 auto& pe = herderB.getPendingEnvelopes();
-                herderB.getHerderSCPDriver().toPOGchainValue(
+                herderB.getHerderpogcvmDriver().toPOGchainValue(
                     env.statement.pledges.externalize().commit.value, sv);
                 auto txset = pe.getTxSet(sv.txSetHash);
                 REQUIRE(txset);
-                validatorSCPMessagesB[start] = std::make_pair(env, txset);
+                validatorpogcvmMessagesB[start] = std::make_pair(env, txset);
             }
         }
     }
 
-    REQUIRE(validatorSCPMessagesA.size() == validatorSCPMessagesB.size());
+    REQUIRE(validatorpogcvmMessagesA.size() == validatorpogcvmMessagesB.size());
     checkHerder(*(getC()), herderC,
                 Herder::State::HERDER_TRACKING_NETWORK_STATE, currentCLedger());
     REQUIRE(currentCLedger() == currentLedger);
 
     auto receiveLedger = [&](uint32_t ledger, Herder& herder) {
-        auto newMsgB = validatorSCPMessagesB.at(ledger);
-        auto newMsgA = validatorSCPMessagesA.at(ledger);
+        auto newMsgB = validatorpogcvmMessagesB.at(ledger);
+        auto newMsgA = validatorpogcvmMessagesA.at(ledger);
 
         REQUIRE(
-            herder.recvSCPEnvelope(newMsgA.first, qset, *(newMsgA.second)) ==
+            herder.recvpogcvmEnvelope(newMsgA.first, qset, *(newMsgA.second)) ==
             Herder::ENVELOPE_STATUS_READY);
         REQUIRE(
-            herder.recvSCPEnvelope(newMsgB.first, qset, *(newMsgB.second)) ==
+            herder.recvpogcvmEnvelope(newMsgB.first, qset, *(newMsgB.second)) ==
             Herder::ENVELOPE_STATUS_READY);
     };
 
@@ -1987,7 +1987,7 @@ TEST_CASE("herder externalizes values", "[herder]")
 
         // Wait until C goes out of sync, and processes future slots
         simulation->crankUntil([&]() { return !lmC.isSynced(); },
-                               2 * Herder::CONSENSUS_STUCK_TIMEOUT_SECONDS,
+                               2 * Herder::validation_STUCK_TIMEOUT_SECONDS,
                                false);
 
         // Ensure LM is out of sync, and Herder tracks ledger seq from latest
@@ -2040,16 +2040,16 @@ TEST_CASE("herder externalizes values", "[herder]")
         // As we're back in sync now, ensure Herder and LM are consistent with
         // each other
         auto lcl = lmC.getLastClosedLedgerNum();
-        REQUIRE(lcl == herderC.trackingConsensusLedgerIndex());
+        REQUIRE(lcl == herderC.trackingvalidationLedgerIndex());
 
-        // Ensure that C sent out a nomination message for the next consensus
+        // Ensure that C sent out a nomination message for the next validation
         // round
         simulation->crankUntil(
             [&]() {
                 for (auto const& msg :
-                     herderC.getSCP().getLatestMessagesSend(lcl + 1))
+                     herderC.getpogcvm().getLatestMessagesSend(lcl + 1))
                 {
-                    if (msg.statement.pledges.type() == SCP_ST_NOMINATE)
+                    if (msg.statement.pledges.type() == pogcvm_ST_NOMINATE)
                     {
                         return true;
                     }
@@ -2062,7 +2062,7 @@ TEST_CASE("herder externalizes values", "[herder]")
     SECTION("newer ledgers externalize in order")
     {
         auto checkReceivedLedgers = [&]() {
-            for (auto const& msgPair : validatorSCPMessagesA)
+            for (auto const& msgPair : validatorpogcvmMessagesA)
             {
                 receiveLedger(msgPair.first, herderC);
 
@@ -2094,7 +2094,7 @@ TEST_CASE("herder externalizes values", "[herder]")
                     return herderC.getState() ==
                            Herder::State::HERDER_SYNCING_STATE;
                 },
-                2 * Herder::CONSENSUS_STUCK_TIMEOUT_SECONDS, false);
+                2 * Herder::validation_STUCK_TIMEOUT_SECONDS, false);
             checkHerder(*(getC()), herderC, Herder::State::HERDER_SYNCING_STATE,
                         currentLedger);
             checkReceivedLedgers();
@@ -2155,7 +2155,7 @@ TEST_CASE("herder externalizes values", "[herder]")
                     return newHerderC.getState() ==
                            Herder::State::HERDER_SYNCING_STATE;
                 },
-                2 * Herder::CONSENSUS_STUCK_TIMEOUT_SECONDS, false);
+                2 * Herder::validation_STUCK_TIMEOUT_SECONDS, false);
             checkHerder(*newC, newHerderC, Herder::State::HERDER_SYNCING_STATE,
                         currentlyTracking);
 
@@ -2203,7 +2203,7 @@ TEST_CASE("herder externalizes values", "[herder]")
             auto newC =
                 simulation->addNode(validatorCKey, qset, &configC, false);
 
-            // Restarting C should trigger due to FORCE_SCP
+            // Restarting C should trigger due to FORCE_pogcvm
             newC->start();
             HerderImpl& newHerderC =
                 *static_cast<HerderImpl*>(&newC->getHerder());
@@ -2233,7 +2233,7 @@ TEST_CASE("quick restart", "[herder][quickRestart]")
     auto validatorKey = SecretKey::fromSeed(sha256("validator"));
     auto listenerKey = SecretKey::fromSeed(sha256("listener"));
 
-    SCPQuorumSet qSet;
+    pogcvmQuorumSet qSet;
     qSet.threshold = 1;
     qSet.validators.push_back(validatorKey.getPublicKey());
 
@@ -2375,7 +2375,7 @@ TEST_CASE("In quorum filtering", "[quorum][herder][acceptance]")
     auto node0 = sim->getNode(nodeIDs[0]);
     auto qSetBase = node0->getConfig().QUORUM_SET;
     std::vector<SecretKey> extraK;
-    std::vector<SCPQuorumSet> qSetK;
+    std::vector<pogcvmQuorumSet> qSetK;
     for (int i = 0; i < 4; i++)
     {
         extraK.emplace_back(
@@ -2396,21 +2396,21 @@ TEST_CASE("In quorum filtering", "[quorum][herder][acceptance]")
     sim->crankUntil([&]() { return sim->haveAllExternalized(3, 1); },
                     std::chrono::seconds(20), false);
 
-    // process scp messages for each  node
-    auto checkNodes = [&](std::function<bool(SCPEnvelope const&)> proc) {
+    // process pogcvm messages for each  node
+    auto checkNodes = [&](std::function<bool(pogcvmEnvelope const&)> proc) {
         for (auto const& k : qSetBase.validators)
         {
             auto c = sim->getNode(k);
             HerderImpl& herder = *static_cast<HerderImpl*>(&c->getHerder());
 
             auto const& lcl = c->getLedgerManager().getLastClosedLedgerHeader();
-            herder.getSCP().processCurrentState(lcl.header.ledgerSeq, proc,
+            herder.getpogcvm().processCurrentState(lcl.header.ledgerSeq, proc,
                                                 true);
         }
     };
 
     // none of the messages from the extra nodes should be present
-    checkNodes([&](SCPEnvelope const& e) {
+    checkNodes([&](pogcvmEnvelope const& e) {
         bool r =
             std::find_if(extraK.begin(), extraK.end(), [&](SecretKey const& s) {
                 return e.statement.nodeID == s.getPublicKey();
@@ -2447,7 +2447,7 @@ TEST_CASE("In quorum filtering", "[quorum][herder][acceptance]")
     std::vector<bool> found;
     found.resize(extraK.size(), false);
 
-    checkNodes([&](SCPEnvelope const& e) {
+    checkNodes([&](pogcvmEnvelope const& e) {
         // messages for E1..E3 are present, E0 is still filtered
         for (int i = 0; i <= 3; i++)
         {
@@ -2480,7 +2480,7 @@ externalize(SecretKey const& sk, LedgerManager& lm, HerderImpl& herder,
 
     POGchainValue sv = herder.makePOGchainValue(
         txSet->getContentsHash(), 2, xdr::xvector<UpgradeType, 6>{}, sk);
-    herder.getHerderSCPDriver().valueExternalized(ledgerSeq,
+    herder.getHerderpogcvmDriver().valueExternalized(ledgerSeq,
                                                   xdr::xdr_to_opaque(sv));
 }
 
@@ -2535,7 +2535,7 @@ TEST_CASE("do not flood too many transactions", "[herder][transactionqueue]")
                 auto cfg = getTestConfig(i);
                 cfg.TESTING_UPGRADE_MAX_TX_SET_SIZE = 500;
                 cfg.NODE_IS_VALIDATOR = false;
-                cfg.FORCE_SCP = false;
+                cfg.FORCE_pogcvm = false;
                 cfg.FLOOD_TX_PERIOD_MS = 100;
                 cfg.FLOOD_OP_RATE_PER_LEDGER = 2.0;
                 return cfg;
@@ -2544,7 +2544,7 @@ TEST_CASE("do not flood too many transactions", "[herder][transactionqueue]")
         auto mainKey = SecretKey::fromSeed(sha256("main"));
         auto otherKey = SecretKey::fromSeed(sha256("other"));
 
-        SCPQuorumSet qset;
+        pogcvmQuorumSet qset;
         qset.threshold = 1;
         qset.validators.push_back(mainKey.getPublicKey());
 
@@ -2723,7 +2723,7 @@ TEST_CASE("slot herder policy", "[herder]")
     Config cfg(getTestConfig());
 
     // start in sync
-    cfg.FORCE_SCP = false;
+    cfg.FORCE_pogcvm = false;
     cfg.MANUAL_CLOSE = false;
     cfg.NODE_SEED = v0SecretKey;
     cfg.MAX_SLOTS_TO_REMEMBER = 5;
@@ -2739,14 +2739,14 @@ TEST_CASE("slot herder policy", "[herder]")
 
     auto& herder = static_cast<HerderImpl&>(app->getHerder());
 
-    auto qSet = herder.getSCP().getLocalQuorumSet();
+    auto qSet = herder.getpogcvm().getLocalQuorumSet();
     auto qsetHash = sha256(xdr::xdr_to_opaque(qSet));
 
     auto recvExternalize = [&](SecretKey const& sk, uint64_t slotIndex,
                                Hash const& prevHash) {
-        auto envelope = SCPEnvelope{};
+        auto envelope = pogcvmEnvelope{};
         envelope.statement.slotIndex = slotIndex;
-        envelope.statement.pledges.type(SCP_ST_EXTERNALIZE);
+        envelope.statement.pledges.type(pogcvm_ST_EXTERNALIZE);
         auto& ext = envelope.statement.pledges.externalize();
         TxSetFramePtr txSet = std::make_shared<TxSetFrame>(prevHash);
 
@@ -2760,7 +2760,7 @@ TEST_CASE("slot herder policy", "[herder]")
         ext.nH = 1;
         envelope.statement.nodeID = sk.getPublicKey();
         herder.signEnvelope(sk, envelope);
-        auto res = herder.recvSCPEnvelope(envelope, qSet, *txSet);
+        auto res = herder.recvpogcvmEnvelope(envelope, qSet, *txSet);
         REQUIRE(res == Herder::ENVELOPE_STATUS_READY);
     };
 
@@ -2789,11 +2789,11 @@ TEST_CASE("slot herder policy", "[herder]")
         }
     }
     REQUIRE(herder.getState() == Herder::HERDER_TRACKING_NETWORK_STATE);
-    REQUIRE(herder.getSCP().getKnownSlotsCount() == LIMIT);
+    REQUIRE(herder.getpogcvm().getKnownSlotsCount() == LIMIT);
 
     auto oneSec = std::chrono::seconds(1);
     // let the node go out of sync, it should reach the desired state
-    timeout = clock.now() + Herder::CONSENSUS_STUCK_TIMEOUT_SECONDS + oneSec;
+    timeout = clock.now() + Herder::validation_STUCK_TIMEOUT_SECONDS + oneSec;
     while (herder.getState() == Herder::HERDER_TRACKING_NETWORK_STATE)
     {
         clock.crank(false);
@@ -2810,10 +2810,10 @@ TEST_CASE("slot herder policy", "[herder]")
         clock.sleep_for(oneSec);
         recvExternPeers(newSeq++, prev, false);
     }
-    REQUIRE(herder.getSCP().getKnownSlotsCount() == (LIMIT + PARTIAL));
+    REQUIRE(herder.getpogcvm().getKnownSlotsCount() == (LIMIT + PARTIAL));
 
     timeout = clock.now() + Herder::OUT_OF_SYNC_RECOVERY_TIMER + oneSec;
-    while (herder.getSCP().getKnownSlotsCount() !=
+    while (herder.getpogcvm().getKnownSlotsCount() !=
            Herder::LEDGER_VALIDITY_BRACKET)
     {
         clock.sleep_for(oneSec);
@@ -2839,7 +2839,7 @@ TEST_CASE("slot herder policy", "[herder]")
 
     waitForRecovery();
     auto const FULLSLOTS = Herder::LEDGER_VALIDITY_BRACKET + LIMIT;
-    REQUIRE(herder.getSCP().getKnownSlotsCount() == FULLSLOTS);
+    REQUIRE(herder.getpogcvm().getKnownSlotsCount() == FULLSLOTS);
 
     // now inject a few more, policy should apply here, with
     // partial in between
@@ -2850,12 +2850,12 @@ TEST_CASE("slot herder policy", "[herder]")
     {
         recvExternPeers(newSeq++, prevHash, false);
         waitForRecovery();
-        REQUIRE(herder.getSCP().getKnownSlotsCount() == FULLSLOTS);
+        REQUIRE(herder.getpogcvm().getKnownSlotsCount() == FULLSLOTS);
     }
     // adding one more, should get rid of the partial slots
     recvExternPeers(newSeq++, prevHash, false);
     waitForRecovery();
-    REQUIRE(herder.getSCP().getKnownSlotsCount() ==
+    REQUIRE(herder.getpogcvm().getKnownSlotsCount() ==
             Herder::LEDGER_VALIDITY_BRACKET);
 }
 

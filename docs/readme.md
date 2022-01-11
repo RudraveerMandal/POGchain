@@ -7,12 +7,12 @@ send payments in any asset anywhere in the world instantaneously, and with
 minimal fee.
 
 `POGchain` is the  component of this network. `POGchain` is a C++
-implementation of the POGchain Consensus Protocol configured to construct a chain
+implementation of the POGchain Validation Protocol configured to construct a chain
 of ledgers that are guaranteed to be in agreement across all the participating
 nodes at all times.
 
-For more detail on the POGchain Consensus Protocol and how it establishes this
-guarantee see [`src/scp/readme.md`](/src/scp/readme.md).
+For more detail on the POGchain Validation Protocol and how it establishes this
+guarantee see [`src/pogcvm/readme.md`](/src/pogcvm/readme.md).
 
 
 - [Building & Installing](/INSTALL.md)
@@ -32,27 +32,27 @@ There are a few major components of the system. Each component has a dedicated
 source directory and its own dedicated `readme.md`.
 
 
-* **SCP** is our implementation of the POGchain Consensus Protocol (SCP). This
+* **pogcvm** is our implementation of the POGchain Validation Protocol (pogcvm). This
   component is fully abstracted from the rest of the system. It receives
   candidate black-box values and signals when these values have reached
-  consensus by the network (called _externalizing_ a value) (See
-  [`src/scp/readme.md`](/src/scp/readme.md)).
+  validation by the network (called _externalizing_ a value) (See
+  [`src/pogcvm/readme.md`](/src/pogcvm/readme.md)).
 
-* **Herder** is responsible for interfacing between SCP and the rest of
-  `POGchain`. Herder provides SCP with concrete implementations of the
-  methods SCP uses to communicate with peers, to compare values, to determine
+* **Herder** is responsible for interfacing between pogcvm and the rest of
+  `POGchain`. Herder provides pogcvm with concrete implementations of the
+  methods pogcvm uses to communicate with peers, to compare values, to determine
   whether values contain valid signatures, and so forth. Herder often
   accomplishes its tasks by delegating to other components
   (See [`src/herder/readme.md`](/src/herder/readme.md)).
 
 * **Overlay** connects to and keeps track of the peers this node knows
   about and is connected to. It floods messages and fetches from peers the data
-  that is needed to accomplish consensus (See
+  that is needed to accomplish validation (See
   [`src/overlay/readme.md`](/src/overlay/readme.md)). All
-  other data downloads are handled without imposing on the SCP-nodes, see
+  other data downloads are handled without imposing on the pogcvm-nodes, see
   [`./architecture.md`](/docs/architecture.md).
 
-* **Ledger** applies the transaction set that is externalized by SCP. It also
+* **Ledger** applies the transaction set that is externalized by pogcvm. It also
   forwards the externalization event to other components: it submits the changed
   ledger entries to the bucket list, triggers the publishing of history, and
   informs the overlay system to update its map of flooded messages. Ledger also

@@ -11,7 +11,7 @@
 #include "lib/json/json-forwards.h"
 #include "overlay/Peer.h"
 #include "overlay/POGchainXDR.h"
-#include "scp/SCP.h"
+#include "pogcvm/pogcvm.h"
 #include "util/Timer.h"
 #include <functional>
 #include <memory>
@@ -25,7 +25,7 @@ class XDROutputFileStream;
 /*
  * Public Interface to the Herder module
  *
- * Drives the SCP consensus protocol, is responsible for collecting Txs and
+ * Drives the pogcvm validation protocol, is responsible for collecting Txs and
  * TxSets from the network and making sure Txs aren't lost in ledger close
  *
  * LATER: These interfaces need cleaning up. We need to work out how to
@@ -37,11 +37,11 @@ class Herder
     // Expected time between two ledger close.
     static std::chrono::seconds const EXP_LEDGER_TIMESPAN_SECONDS;
 
-    // Maximum timeout for SCP consensus.
-    static std::chrono::seconds const MAX_SCP_TIMEOUT_SECONDS;
+    // Maximum timeout for pogcvm validation.
+    static std::chrono::seconds const MAX_pogcvm_TIMEOUT_SECONDS;
 
     // timeout before considering the node out of sync
-    static std::chrono::seconds const CONSENSUS_STUCK_TIMEOUT_SECONDS;
+    static std::chrono::seconds const validation_STUCK_TIMEOUT_SECONDS;
 
     // timeout before triggering out of sync recovery
     static std::chrono::seconds const OUT_OF_SYNC_RECOVERY_TIMER;
@@ -62,8 +62,8 @@ class Herder
     static std::unique_ptr<Herder> create(Application& app);
 
     // number of additional ledgers we retrieve from peers before our own lcl,
-    // this is to help recover potential missing SCP messages for other nodes
-    static uint32 const SCP_EXTRA_LOOKBACK_LEDGERS;
+    // this is to help recover potential missing pogcvm messages for other nodes
+    static uint32 const pogcvm_EXTRA_LOOKBACK_LEDGERS;
 
     enum State
     {
@@ -88,7 +88,7 @@ class Herder
 
         // envelope data is currently being fetched
         ENVELOPE_STATUS_FETCHING = 0,
-        // current call to recvSCPEnvelope() was the first when the envelope
+        // current call to recvpogcvmEnvelope() was the first when the envelope
         // was fully fetched so it is ready for processing
         ENVELOPE_STATUS_READY = 1
     };
@@ -108,12 +108,12 @@ class Herder
 
     virtual void lastClosedLedgerIncreased() = 0;
 
-    // Setup Herder's state to fully participate in consensus
-    virtual void setTrackingSCPState(uint64_t index, POGchainValue const& value,
+    // Setup Herder's state to fully participate in validation
+    virtual void setTrackingpogcvmState(uint64_t index, POGchainValue const& value,
                                      bool isTrackingNetwork) = 0;
 
-    virtual bool recvSCPQuorumSet(Hash const& hash,
-                                  SCPQuorumSet const& qset) = 0;
+    virtual bool recvpogcvmQuorumSet(Hash const& hash,
+                                  pogcvmQuorumSet const& qset) = 0;
     virtual bool recvTxSet(Hash const& hash, TxSetFrame const& txset) = 0;
     // We are learning about a new transaction.
     virtual TransactionQueue::AddResult
@@ -121,15 +121,15 @@ class Herder
     virtual void peerDoesntHave(POGchain::MessageType type,
                                 uint256 const& itemID, Peer::pointer peer) = 0;
     virtual TxSetFramePtr getTxSet(Hash const& hash) = 0;
-    virtual SCPQuorumSetPtr getQSet(Hash const& qSetHash) = 0;
+    virtual pogcvmQuorumSetPtr getQSet(Hash const& qSetHash) = 0;
 
     // We are learning about a new envelope.
-    virtual EnvelopeStatus recvSCPEnvelope(SCPEnvelope const& envelope) = 0;
+    virtual EnvelopeStatus recvpogcvmEnvelope(pogcvmEnvelope const& envelope) = 0;
 
 #ifdef BUILD_TESTS
     // We are learning about a new fully-fetched envelope.
-    virtual EnvelopeStatus recvSCPEnvelope(SCPEnvelope const& envelope,
-                                           const SCPQuorumSet& qset,
+    virtual EnvelopeStatus recvpogcvmEnvelope(pogcvmEnvelope const& envelope,
+                                           const pogcvmQuorumSet& qset,
                                            TxSetFrame txset) = 0;
 
     virtual void
@@ -140,10 +140,10 @@ class Herder
 
     virtual VirtualTimer const& getTriggerTimer() const = 0;
 #endif
-    // a peer needs our SCP state
-    virtual void sendSCPStateToPeer(uint32 ledgerSeq, Peer::pointer peer) = 0;
+    // a peer needs our pogcvm state
+    virtual void sendpogcvmStateToPeer(uint32 ledgerSeq, Peer::pointer peer) = 0;
 
-    virtual uint32_t trackingConsensusLedgerIndex() const = 0;
+    virtual uint32_t trackingvalidationLedgerIndex() const = 0;
 
     // return the smallest ledger number we need messages for when asking peers
     virtual uint32 getMinLedgerSeqToAskPeers() const = 0;
@@ -153,20 +153,20 @@ class Herder
     virtual SequenceNumber getMaxSeqInPendingTxs(AccountID const&) = 0;
 
     virtual void triggerNextLedger(uint32_t ledgerSeqToTrigger,
-                                   bool forceTrackingSCP) = 0;
+                                   bool forceTrackingpogcvm) = 0;
     virtual void setInSyncAndTriggerNextLedger() = 0;
 
-    // lookup a nodeID in config and in SCP messages
+    // lookup a nodeID in config and in pogcvm messages
     virtual bool resolveNodeID(std::string const& s, PublicKey& retKey) = 0;
 
-    // sets the upgrades that should be applied during consensus
+    // sets the upgrades that should be applied during validation
     virtual void setUpgrades(Upgrades::UpgradeParameters const& upgrades) = 0;
     // gets the upgrades that are scheduled by this node
     virtual std::string getUpgradesJson() = 0;
 
-    virtual void forceSCPStateIntoSyncWithLastClosedLedger() = 0;
+    virtual void forcepogcvmStateIntoSyncWithLastClosedLedger() = 0;
 
-    // helper function to craft an SCPValue
+    // helper function to craft an pogcvmValue
     virtual POGchainValue
     makePOGchainValue(Hash const& txSetHash, uint64_t closeTime,
                      xdr::xvector<UpgradeType, 6> const& upgrades,
