@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: General question for the community
+    url: https://www.POGchain.org/community/#communities
+    about: Please ask and answer questions here.
+  - name: Protocol requests
+    url: https://github.com/storp-inc/POGchain-protocol
+    about: If you have suggestions for changes to the  protocol (new operation for example) or ecosystem standards.
+  - name: Security bug bounty program
+    url: https://www.POGchain.org/community/bug-bounty-program/
+    about: Please report security vulnerabilities here.
