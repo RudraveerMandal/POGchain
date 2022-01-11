@@ -1,0 +1,4 @@
+#include "main/POGchainVersion.h"
+
+const std::string POGchain_CORE_VERSION = "%%VERSION%%";
+

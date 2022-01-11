@@ -1,0 +1,17 @@
+#!/bin/bash
+
+# Copyright 2018 POGchain Development Foundation and contributors. Licensed
+# under the Apache License, Version 2.0. See the COPYING file at the root
+# of this distribution or at http://www.apache.org/licenses/LICENSE-2.0
+
+BASE_INSTANCE="$1"
+TESTS="$2"
+
+POGchain_CORE_DEFAULT_TEST_PARAMS="--ll fatal -w NoTests -a -r simple"
+if [[ "$ALL_VERSIONS" != "" ]]; then
+    POGchain_CORE_DEFAULT_TEST_PARAMS="$POGchain_CORE_DEFAULT_TEST_PARAMS --all-versions"
+fi
+
+: ${POGchain_CORE_TEST_PARAMS=$POGchain_CORE_DEFAULT_TEST_PARAMS}
+
+./POGchain test $POGchain_CORE_TEST_PARAMS --base-instance $BASE_INSTANCE "$TESTS" 2> /dev/null
